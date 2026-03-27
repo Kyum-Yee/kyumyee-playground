@@ -19,23 +19,39 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <article>
-      <div className="mb-6">
-        <Link href="/blog" className="text-sm text-blue-600 hover:underline">← 블로그 목록</Link>
-        <h1 className="text-3xl font-bold mt-4 mb-2">{meta.title}</h1>
-        <div className="text-sm text-gray-500 flex gap-3 flex-wrap">
-          <span>{meta.date}</span>
+      {/* Back link */}
+      <Link href="/blog" className="nav-link" style={{ display: 'inline-block', marginBottom: '2rem' }}>
+        ← --blog
+      </Link>
+
+      {/* Post header */}
+      <header style={{ marginBottom: '2.5rem' }}>
+        <h1
+          className="font-serif"
+          style={{
+            fontSize: 'clamp(1.6rem, 4vw, 2.4rem)',
+            fontWeight: 300,
+            color: 'var(--text-bright)',
+            letterSpacing: '-0.025em',
+            lineHeight: 1.15,
+            marginBottom: '1rem',
+          }}
+        >
+          {meta.title}
+        </h1>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="font-mono text-xs" style={{ color: 'var(--text-dim)' }}>{meta.date}</span>
           {meta.categories.map(c => (
-            <Link key={c} href={`/blog?category=${encodeURIComponent(c)}`} className="bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">{c}</Link>
+            <Link key={c} href={`/blog?category=${encodeURIComponent(c)}`} className="pill">{c}</Link>
           ))}
           {meta.tags.map(t => (
-            <Link key={t} href={`/blog?tag=${encodeURIComponent(t)}`} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded hover:bg-blue-100">#{t}</Link>
+            <Link key={t} href={`/blog?tag=${encodeURIComponent(t)}`} className="tag">#{t}</Link>
           ))}
         </div>
-      </div>
-      <div
-        className="prose prose-gray max-w-none"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      </header>
+
+      {/* Body */}
+      <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />
     </article>
   )
 }

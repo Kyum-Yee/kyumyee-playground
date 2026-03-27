@@ -14,12 +14,13 @@ export default async function MCPGalleryPage({ searchParams }: Props) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-2">MCP 갤러리</h1>
-      <p className="text-gray-600 mb-6">Claude에 연결할 수 있는 MCP 서버 목록</p>
+      <div className="section-head">03/ MCP</div>
       <TagFilter tags={tags} categories={categories} basePath="/mcp" />
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {mcps.map(m => <MCPCard key={m.slug} mcp={m} />)}
-        {mcps.length === 0 && <p className="text-gray-500">MCP가 없습니다.</p>}
+        {mcps.length === 0 && (
+          <p className="font-mono text-xs" style={{ color: 'var(--text-dim)' }}>MCP가 없습니다.</p>
+        )}
       </div>
     </div>
   )

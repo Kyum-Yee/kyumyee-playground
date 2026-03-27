@@ -14,11 +14,13 @@ export default async function BlogPage({ searchParams }: Props) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">블로그</h1>
+      <div className="section-head">01/ BLOG</div>
       <TagFilter tags={tags} categories={categories} basePath="/blog" />
-      <div className="mt-6 space-y-4">
+      <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {posts.map(p => <BlogCard key={p.slug} post={p} />)}
-        {posts.length === 0 && <p className="text-gray-500">글이 없습니다.</p>}
+        {posts.length === 0 && (
+          <p className="font-mono text-xs" style={{ color: 'var(--text-dim)' }}>글이 없습니다.</p>
+        )}
       </div>
     </div>
   )

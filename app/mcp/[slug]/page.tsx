@@ -17,32 +17,60 @@ export default async function MCPDetailPage({ params }: Props) {
 
   return (
     <div>
-      <Link href="/mcp" className="text-sm text-blue-600 hover:underline">← MCP 갤러리</Link>
-      <h1 className="text-3xl font-bold mt-4 mb-2">{mcp.title}</h1>
-      <div className="flex gap-2 flex-wrap mb-4 text-sm">
-        {mcp.categories.map(c => (
-          <Link key={c} href={`/mcp?category=${encodeURIComponent(c)}`} className="bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">{c}</Link>
-        ))}
-        {mcp.tags.map(t => (
-          <Link key={t} href={`/mcp?tag=${encodeURIComponent(t)}`} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded hover:bg-blue-100">#{t}</Link>
-        ))}
-      </div>
-      <p className="text-gray-700 mb-8">{mcp.description}</p>
+      <Link href="/mcp" className="nav-link" style={{ display: 'inline-block', marginBottom: '2rem' }}>
+        ← --mcp
+      </Link>
+
+      <header style={{ marginBottom: '2.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.75rem' }}>
+          <h1
+            className="font-serif"
+            style={{
+              fontSize: 'clamp(1.6rem, 4vw, 2.4rem)',
+              fontWeight: 300,
+              color: 'var(--text-bright)',
+              letterSpacing: '-0.025em',
+              lineHeight: 1.15,
+            }}
+          >
+            {mcp.title}
+          </h1>
+          <span className="badge badge-mcp">MCP</span>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          {mcp.categories.map(c => (
+            <Link key={c} href={`/mcp?category=${encodeURIComponent(c)}`} className="pill">{c}</Link>
+          ))}
+          {mcp.tags.map(t => (
+            <Link key={t} href={`/mcp?tag=${encodeURIComponent(t)}`} className="tag">#{t}</Link>
+          ))}
+        </div>
+      </header>
+
+      <p style={{ color: 'var(--text)', lineHeight: 1.7, marginBottom: '2.5rem' }}>{mcp.description}</p>
 
       {mcp.features && mcp.features.length > 0 && (
-        <section className="mb-8">
-          <h2 className="font-semibold mb-2">주요 기능</h2>
-          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
-            {mcp.features.map(f => <li key={f}>{f}</li>)}
+        <section style={{ marginBottom: '2.5rem' }}>
+          <div className="section-head">FEATURES</div>
+          <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            {mcp.features.map(f => (
+              <li key={f} className="font-mono text-sm" style={{ color: 'var(--text)', paddingLeft: '1.25rem', position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 0, color: 'var(--accent)' }}>→</span>
+                {f}
+              </li>
+            ))}
           </ul>
         </section>
       )}
 
       {mcp.install_snippet && (
         <section>
-          <h2 className="font-semibold mb-2">설치 방법 (.mcp.json)</h2>
-          <pre className="bg-gray-50 border rounded p-4 text-sm overflow-x-auto">{mcp.install_snippet}</pre>
-          <p className="text-xs text-gray-500 mt-2">위 JSON을 <code>~/.claude/.mcp.json</code> 또는 프로젝트 <code>.mcp.json</code>에 추가하세요.</p>
+          <div className="section-head">INSTALL (.mcp.json)</div>
+          <pre className="code-block">{mcp.install_snippet}</pre>
+          <p className="font-mono text-xs" style={{ color: 'var(--text-dim)', marginTop: '0.75rem' }}>
+            위 JSON을 <code style={{ color: 'var(--accent)' }}>~/.claude/.mcp.json</code> 또는 프로젝트{' '}
+            <code style={{ color: 'var(--accent)' }}>.mcp.json</code>에 추가하세요.
+          </p>
         </section>
       )}
     </div>

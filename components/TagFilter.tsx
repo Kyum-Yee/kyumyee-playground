@@ -24,20 +24,20 @@ function TagFilterInner({ tags, categories, basePath }: Props) {
   }
 
   return (
-    <div className="space-y-2">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
       {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
           <button
             onClick={() => navigate('', '')}
-            className={`px-3 py-1 rounded-full text-sm border ${!activeCategory && !activeTag ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 hover:border-gray-500'}`}
+            className={`pill${!activeCategory && !activeTag ? ' pill-active' : ''}`}
           >
-            전체
+            ALL
           </button>
           {categories.map(c => (
             <button
               key={c}
               onClick={() => navigate(activeTag, activeCategory === c ? '' : c)}
-              className={`px-3 py-1 rounded-full text-sm border ${activeCategory === c ? 'bg-gray-900 text-white border-gray-900' : 'border-gray-300 hover:border-gray-500'}`}
+              className={`pill${activeCategory === c ? ' pill-active' : ''}`}
             >
               {c}
             </button>
@@ -45,12 +45,12 @@ function TagFilterInner({ tags, categories, basePath }: Props) {
         </div>
       )}
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
           {tags.map(t => (
             <button
               key={t}
               onClick={() => navigate(activeTag === t ? '' : t, activeCategory)}
-              className={`px-2 py-0.5 rounded text-sm ${activeTag === t ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}
+              className={`tag${activeTag === t ? ' tag-active' : ''}`}
             >
               #{t}
             </button>

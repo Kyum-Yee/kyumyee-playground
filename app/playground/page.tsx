@@ -14,11 +14,13 @@ export default async function PlaygroundPage({ searchParams }: Props) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Playground</h1>
+      <div className="section-head">02/ PLAYGROUND</div>
       <TagFilter tags={tags} categories={categories} basePath="/playground" />
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {projects.map(p => <ProjectCard key={p.slug} project={p} />)}
-        {projects.length === 0 && <p className="text-gray-500">프로젝트가 없습니다.</p>}
+        {projects.length === 0 && (
+          <p className="font-mono text-xs" style={{ color: 'var(--text-dim)' }}>프로젝트가 없습니다.</p>
+        )}
       </div>
     </div>
   )
