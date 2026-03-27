@@ -1,0 +1,15 @@
+{
+  "name": "kyumyee",
+  "title": "kyumyee MCP — 멀티 플랫폼 콘텐츠 배포",
+  "description": "Notion, X, GitHub, LinkedIn, Threads, Mastodon, Reddit에 콘텐츠를 단일 명령으로 배포하는 MCP 서버. Claude에서 직접 포스팅·삭제·스타일 변환까지.",
+  "categories": ["MCP", "자동화", "콘텐츠"],
+  "tags": ["MCP", "배포", "Notion", "X", "Reddit", "Claude"],
+  "features": [
+    "7개 플랫폼 동시 배포 (Notion / X / GitHub / LinkedIn / Threads / Mastodon / Reddit)",
+    "게시물 삭제 (recall_content)",
+    "플랫폼별 설정 상태 확인 (get_deploy_status)",
+    "Claude AI 기반 스타일 변환 (transform_style)",
+    "예약 배포 (list_scheduled / cancel_scheduled)"
+  ],
+  "install_snippet": "{\n  \"mcpServers\": {\n    \"kyumyee\": {\n      \"url\": \"https://kyumyee.vercel.app/api/mcp\"\n    }\n  }\n}"
+}
