@@ -76,17 +76,19 @@ export default async function ProjectDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Demo project: iframe */}
-      {project.type === 'non-ai' && project.demo && (
+      {/* Demo project: external link */}
+      {project.demo && (
         <div>
           <div className="section-head"><span>01</span> 데모</div>
-          <div style={{ borderLeft: '2px solid var(--accent)' }}>
-            <iframe
-              src={project.demo}
-              style={{ width: '100%', height: '480px', border: 'none', display: 'block' }}
-              title={project.title}
-            />
-          </div>
+          <a
+            href={project.demo}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-link"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            데모 열기 →
+          </a>
         </div>
       )}
     </div>

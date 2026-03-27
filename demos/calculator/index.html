@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #080a0c;
+      --surface:   #0f1215;
+      --border:    #1e2329;
+      --text-dim:  #4a5260;
+      --text:      #8b96a8;
+      --text-hi:   #d4dce8;
+      --accent:    oklch(0.72 0.17 162);
+      --accent-dk: oklch(0.55 0.15 162);
+      --num-bg:    #111418;
+      --num-hover: #161b20;
+      --op-bg:     #0d1a14;
+      --op-hover:  oklch(0.15 0.05 162);
+      --eq-bg:     oklch(0.20 0.08 162);
+      --eq-hover:  oklch(0.25 0.10 162);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      color: var(--text-hi);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .calc {
+      width: 100%;
+      max-width: 340px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px oklch(0.72 0.17 162 / 0.06),
+        0 24px 48px rgba(0,0,0,0.6),
+        0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    /* ── Display ── */
+    .display {
+      padding: 1.5rem 1.5rem 1rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 0.3rem;
+      position: relative;
+    }
+
+    .display::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.3;
+    }
+
+    .expr {
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.03em;
+      min-height: 16px;
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .result {
+      font-size: 2.8rem;
+      font-weight: 300;
+      letter-spacing: -0.04em;
+      color: var(--text-hi);
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1;
+      transition: color 0.1s;
+    }
+
+    .result.flash {
+      color: var(--accent);
+    }
+
+    /* ── Buttons ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border-top: 1px solid var(--border);
+    }
+
+    .btn {
+      background: var(--num-bg);
+      border: none;
+      color: var(--text-hi);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 400;
+      padding: 0;
+      height: 64px;
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: -0.01em;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:hover { background: var(--num-hover); }
+    .btn:active { background: var(--border); }
+
+    .btn.op {
+      background: var(--op-bg);
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .btn.op:hover { background: var(--op-hover); }
+
+    .btn.eq {
+      background: var(--eq-bg);
+      color: var(--accent);
+      font-size: 1.2rem;
+      font-weight: 500;
+    }
+    .btn.eq:hover { background: var(--eq-hover); }
+    .btn.eq:active { background: oklch(0.30 0.12 162); }
+
+    .btn.fn {
+      color: var(--text);
+      font-size: 0.875rem;
+    }
+    .btn.fn:hover { background: var(--num-hover); color: var(--text-hi); }
+
+    .btn.zero {
+      grid-column: span 2;
+      justify-content: flex-start;
+      padding-left: 1.5rem;
+    }
+
+    /* label accent line on operator column */
+    .btn.op::after {
+      display: none;
+    }
+
+    /* footer */
+    .footer {
+      padding: 0.6rem 1rem;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="calc">
+    <div class="display">
+      <div class="expr" id="expr"></div>
+      <div class="result" id="result">0</div>
+    </div>
+
+    <div class="grid">
+      <!-- row 1 -->
+      <button class="btn fn" data-action="ac">AC</button>
+      <button class="btn fn" data-action="sign">±</button>
+      <button class="btn fn" data-action="percent">%</button>
+      <button class="btn op" data-action="op" data-op="÷">÷</button>
+      <!-- row 2 -->
+      <button class="btn" data-action="num" data-num="7">7</button>
+      <button class="btn" data-action="num" data-num="8">8</button>
+      <button class="btn" data-action="num" data-num="9">9</button>
+      <button class="btn op" data-action="op" data-op="×">×</button>
+      <!-- row 3 -->
+      <button class="btn" data-action="num" data-num="4">4</button>
+      <button class="btn" data-action="num" data-num="5">5</button>
+      <button class="btn" data-action="num" data-num="6">6</button>
+      <button class="btn op" data-action="op" data-op="−">−</button>
+      <!-- row 4 -->
+      <button class="btn" data-action="num" data-num="1">1</button>
+      <button class="btn" data-action="num" data-num="2">2</button>
+      <button class="btn" data-action="num" data-num="3">3</button>
+      <button class="btn op" data-action="op" data-op="+">+</button>
+      <!-- row 5 -->
+      <button class="btn zero" data-action="num" data-num="0">0</button>
+      <button class="btn" data-action="dot">.</button>
+      <button class="btn eq" data-action="eq">=</button>
+    </div>
+
+    <div class="footer">kyumyee / calculator</div>
+  </div>
+
+  <script>
+    const resultEl = document.getElementById('result')
+    const exprEl = document.getElementById('expr')
+
+    let state = {
+      current: '0',
+      prev: null,
+      op: null,
+      justEvaled: false,
+    }
+
+    function setDisplay(val, expr = '') {
+      const s = String(val)
+      // shorten large numbers
+      const n = parseFloat(s)
+      if (!isNaN(n) && Math.abs(n) >= 1e12) {
+        resultEl.textContent = n.toExponential(4)
+      } else {
+        resultEl.textContent = s.length > 12 ? parseFloat(parseFloat(s).toPrecision(10)).toString() : s
+      }
+      exprEl.textContent = expr
+    }
+
+    function flash() {
+      resultEl.classList.add('flash')
+      setTimeout(() => resultEl.classList.remove('flash'), 120)
+    }
+
+    function applyOp(a, op, b) {
+      a = parseFloat(a); b = parseFloat(b)
+      switch (op) {
+        case '+': return a + b
+        case '−': return a - b
+        case '×': return a * b
+        case '÷': return b === 0 ? 'Error' : a / b
+      }
+    }
+
+    function clean(n) {
+      if (n === 'Error') return 'Error'
+      const s = parseFloat(n.toPrecision(12)).toString()
+      return s
+    }
+
+    document.querySelector('.grid').addEventListener('click', e => {
+      const btn = e.target.closest('.btn')
+      if (!btn) return
+      const action = btn.dataset.action
+
+      if (action === 'num') {
+        const d = btn.dataset.num
+        if (state.justEvaled) {
+          state.current = d
+          state.justEvaled = false
+        } else {
+          state.current = state.current === '0' ? d : (state.current.length < 12 ? state.current + d : state.current)
+        }
+        setDisplay(state.current, state.prev !== null ? `${state.prev} ${state.op}` : '')
+      }
+
+      else if (action === 'dot') {
+        if (state.justEvaled) { state.current = '0'; state.justEvaled = false }
+        if (!state.current.includes('.')) state.current += '.'
+        setDisplay(state.current, state.prev !== null ? `${state.prev} ${state.op}` : '')
+      }
+
+      else if (action === 'op') {
+        const op = btn.dataset.op
+        if (state.prev !== null && !state.justEvaled) {
+          const r = applyOp(state.prev, state.op, state.current)
+          state.prev = clean(r)
+          state.current = String(r)
+          setDisplay(clean(r), `${clean(r)} ${op}`)
+        } else {
+          state.prev = state.current
+          setDisplay(state.current, `${state.current} ${op}`)
+        }
+        state.op = op
+        state.justEvaled = false
+        // next digit resets current
+        state._nextReset = true
+        const savedCurrent = state.current
+        state.current = savedCurrent
+        // Actually set a flag so next num input resets
+        state.justEvaled = false
+        state._opJustSet = true
+      }
+
+      else if (action === 'eq') {
+        if (state.op && state.prev !== null) {
+          const expr = `${state.prev} ${state.op} ${state.current}`
+          const r = applyOp(state.prev, state.op, state.current)
+          const res = clean(r)
+          flash()
+          state.current = String(r)
+          state.prev = null
+          state.op = null
+          state.justEvaled = true
+          state._opJustSet = false
+          setDisplay(res, `${expr} =`)
+        }
+      }
+
+      else if (action === 'ac') {
+        state = { current: '0', prev: null, op: null, justEvaled: false }
+        setDisplay('0', '')
+      }
+
+      else if (action === 'sign') {
+        if (state.current !== '0') {
+          state.current = state.current.startsWith('-')
+            ? state.current.slice(1)
+            : '-' + state.current
+          setDisplay(state.current, exprEl.textContent)
+        }
+      }
+
+      else if (action === 'percent') {
+        const n = parseFloat(state.current) / 100
+        state.current = String(n)
+        setDisplay(state.current, exprEl.textContent)
+      }
+    })
+
+    // Handle _opJustSet flag properly
+    document.querySelector('.grid').addEventListener('click', e => {
+      const btn = e.target.closest('.btn')
+      if (!btn) return
+      if (btn.dataset.action === 'num' && state._opJustSet) {
+        state.current = btn.dataset.num
+        state._opJustSet = false
+      }
+    }, true)  // capture phase runs before bubble phase
+  </script>
+</body>
+</html>
