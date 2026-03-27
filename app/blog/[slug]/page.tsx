@@ -51,7 +51,9 @@ export default async function BlogPostPage({ params }: Props) {
       </header>
 
       {/* Body */}
-      <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />
+      <div className="prose-wrap">
+        <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />
+      </div>
     </article>
   )
 }

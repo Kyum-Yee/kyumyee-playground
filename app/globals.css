@@ -238,3 +238,68 @@ body::after {
   white-space: pre;
   line-height: 1.75;
 }
+
+/* ── Prose Wrap (blog post reading area — warm editorial) ─────────────────── */
+.prose-wrap {
+  background: #f9f8f6;
+  border-left: 3px solid var(--accent);
+  padding: 2.5rem 2.5rem 2.5rem 2rem;
+  margin-top: 1.5rem;
+}
+
+.prose-wrap .prose {
+  color: #3d3d3d;
+  font-size: 15.5px;
+  line-height: 1.85;
+  max-width: none;
+}
+.prose-wrap .prose :is(h1,h2,h3,h4) {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin-top: 2.25rem;
+  margin-bottom: 0.6rem;
+}
+.prose-wrap .prose h1 { font-size: 1.9rem; font-weight: 300; }
+.prose-wrap .prose h2 { font-size: 1.3rem; border-bottom: 2px solid #1a1a1a; padding-bottom: 0.35rem; }
+.prose-wrap .prose h3 { font-size: 1.05rem; }
+.prose-wrap .prose p  { margin-bottom: 1.15rem; }
+.prose-wrap .prose a  {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-dim);
+  transition: border-color 0.12s;
+}
+.prose-wrap .prose a:hover { border-bottom-color: var(--accent); }
+.prose-wrap .prose strong { color: #1a1a1a; }
+.prose-wrap .prose code {
+  font-family: var(--font-mono);
+  font-size: 0.83em;
+  background: #eeece8;
+  color: #1a5276;
+  padding: 0.15em 0.4em;
+}
+.prose-wrap .prose pre {
+  background: #1e1e1e !important;
+  border: none;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 !important;
+  padding: 1.125rem !important;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+.prose-wrap .prose pre code { background: transparent; color: #d4d4d4; padding: 0; font-size: 0.85em; }
+.prose-wrap .prose blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1.25rem;
+  color: #5a5a5a;
+  font-style: italic;
+  margin: 1.5rem 0;
+}
+.prose-wrap .prose ul { list-style: none; padding-left: 0; }
+.prose-wrap .prose ul > li { padding-left: 1.25rem; position: relative; margin-bottom: 0.4rem; }
+.prose-wrap .prose ul > li::before { content: '→'; position: absolute; left: 0; color: var(--accent); font-family: var(--font-mono); font-size: 0.8em; top: 0.2em; }
+.prose-wrap .prose ol { padding-left: 1.5rem; color: #3d3d3d; }
+.prose-wrap .prose hr { border: none; border-top: 1px solid #d0cdc8; margin: 2rem 0; }

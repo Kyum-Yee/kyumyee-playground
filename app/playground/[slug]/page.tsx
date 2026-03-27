@@ -17,55 +17,76 @@ export default async function ProjectDetailPage({ params }: Props) {
 
   return (
     <div>
-      <Link href="/playground" className="text-sm text-blue-600 hover:underline">← Playground</Link>
-      <h1 className="text-3xl font-bold mt-4 mb-2">{project.title}</h1>
-      <div className="flex gap-2 flex-wrap mb-4 text-sm">
-        <span className="bg-gray-100 px-2 py-0.5 rounded">{project.type === 'ai' ? 'AI 프로젝트' : '데모 프로젝트'}</span>
-        {project.categories.map(c => (
-          <Link key={c} href={`/playground?category=${encodeURIComponent(c)}`} className="bg-gray-100 px-2 py-0.5 rounded hover:bg-gray-200">{c}</Link>
-        ))}
-        {project.tags.map(t => (
-          <Link key={t} href={`/playground?tag=${encodeURIComponent(t)}`} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded hover:bg-blue-100">#{t}</Link>
-        ))}
-      </div>
-      <p className="text-gray-700 mb-6">{project.description}</p>
+      {/* Back link */}
+      <Link href="/playground" className="nav-link" style={{ display: 'inline-block', marginBottom: '2rem' }}>
+        ← --playground
+      </Link>
 
-      {/* AI 프로젝트: 프롬프트 + GitHub 링크 */}
-      {project.type === 'ai' && (
-        <div className="space-y-4">
-          {project.github && (
-            <a href={project.github} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-700">
-              GitHub →
-            </a>
-          )}
-          {project.prompt && (
-            <div>
-              <h2 className="font-semibold mb-2">사용한 프롬프트</h2>
-              <pre className="bg-gray-50 border rounded p-4 text-sm whitespace-pre-wrap overflow-x-auto">{project.prompt}</pre>
-            </div>
-          )}
+      {/* Header */}
+      <header style={{ marginBottom: '2.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+          <span className={`badge ${project.type === 'ai' ? 'badge-ai' : 'badge-demo'}`}>
+            {project.type === 'ai' ? 'ai' : 'demo'}
+          </span>
+          {project.categories.map(c => (
+            <Link key={c} href={`/playground?category=${encodeURIComponent(c)}`} className="pill">{c}</Link>
+          ))}
+        </div>
+        <h1
+          className="font-serif"
+          style={{
+            fontSize: 'clamp(1.6rem, 4vw, 2.4rem)',
+            fontWeight: 300,
+            color: 'var(--text-bright)',
+            letterSpacing: '-0.025em',
+            lineHeight: 1.15,
+            marginBottom: '1rem',
+          }}
+        >
+          {project.title}
+        </h1>
+        <p style={{ color: 'var(--text)', marginBottom: '1rem', lineHeight: 1.65 }}>{project.description}</p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {project.tags.map(t => (
+            <Link key={t} href={`/playground?tag=${encodeURIComponent(t)}`} className="tag">#{t}</Link>
+          ))}
+        </div>
+      </header>
+
+      {/* GitHub link */}
+      {project.github && (
+        <div style={{ marginBottom: '2rem' }}>
+          <a
+            href={project.github}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-link"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            github →
+          </a>
         </div>
       )}
 
-      {/* 비AI 프로젝트: 데모 iframe or 링크 */}
+      {/* AI project: prompt */}
+      {project.type === 'ai' && project.prompt && (
+        <div style={{ marginBottom: '2rem' }}>
+          <div className="section-head"><span>01</span> 프롬프트</div>
+          <pre className="code-block" style={{ whiteSpace: 'pre-wrap' }}>{project.prompt}</pre>
+        </div>
+      )}
+
+      {/* Demo project: iframe */}
       {project.type === 'non-ai' && project.demo && (
         <div>
-          <h2 className="font-semibold mb-2">데모</h2>
-          <iframe
-            src={project.demo}
-            className="w-full h-96 border rounded"
-            title={project.title}
-          />
-        </div>
-      )}
-
-      {project.github && project.type === 'non-ai' && (
-        <div className="mt-4">
-          <a href={project.github} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-700">
-            GitHub →
-          </a>
+          <div className="section-head"><span>01</span> 데모</div>
+          <div style={{ borderLeft: '2px solid var(--accent)' }}>
+            <iframe
+              src={project.demo}
+              style={{ width: '100%', height: '480px', border: 'none', display: 'block' }}
+              title={project.title}
+            />
+          </div>
         </div>
       )}
     </div>

@@ -1,7 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 import { z } from 'zod'
-import Anthropic from '@anthropic-ai/sdk'
 import { NotionPublisher } from '@/lib/platforms/notion'
 import { XPoster } from '@/lib/platforms/x'
 import { GitHubPusher } from '@/lib/platforms/github'
@@ -32,7 +31,7 @@ function getPlatform(name: string): Poster {
   return factory()
 }
 
-// ── In-memory scheduler (MVP) ─────────────────────────────────────────────────
+// ── Session-isolated state ─────────────────────────────────────────────────────
 
 interface ScheduledJob {
   job_id: string
@@ -43,30 +42,50 @@ interface ScheduledJob {
   extra: Record<string, unknown>
 }
 
-const scheduledJobs: Map<string, ScheduledJob> = new Map()
+interface GeminiTask {
+  task_id: string
+  status: 'pending' | 'done'
+  prompt: string
+  result?: string
+  created: number
+}
 
-function scheduleJob(job: Omit<ScheduledJob, 'job_id'>): string {
-  const job_id = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-  scheduledJobs.set(job_id, { ...job, job_id })
-  const delay = new Date(job.at).getTime() - Date.now()
-  if (delay > 0) {
-    setTimeout(async () => {
-      const j = scheduledJobs.get(job_id)
-      if (!j) return
-      try {
-        const poster = getPlatform(j.platform)
-        await poster.post(j.content, j.title, j.extra)
-      } catch (_) { /* best-effort */ }
-      scheduledJobs.delete(job_id)
-    }, delay)
+interface SessionState {
+  scheduledJobs: Map<string, ScheduledJob>
+  geminiTasks: Map<string, GeminiTask>
+  lastActive: number
+}
+
+const sessions = new Map<string, SessionState>()
+const SESSION_TTL_MS = 30 * 60 * 1000  // 30 minutes
+
+function getSession(id: string): SessionState {
+  const s = sessions.get(id)
+  if (s) { s.lastActive = Date.now(); return s }
+  const fresh: SessionState = {
+    scheduledJobs: new Map(),
+    geminiTasks: new Map(),
+    lastActive: Date.now(),
   }
-  return job_id
+  sessions.set(id, fresh)
+  return fresh
+}
+
+function evictExpired() {
+  const cutoff = Date.now() - SESSION_TTL_MS
+  for (const [id, s] of sessions) {
+    if (s.lastActive < cutoff) sessions.delete(id)
+  }
 }
 
 // ── MCP Server factory ────────────────────────────────────────────────────────
 
-function buildMcpServer() {
-  const server = new McpServer({ name: 'kyumyee', version: '1.0.0' })
+function buildMcpServer(sessionId: string) {
+  evictExpired()
+  const session = getSession(sessionId)
+  const server = new McpServer({ name: 'kyumyee', version: '1.1.0' })
+
+  // ── 플랫폼 배포 툴 (AI 호출 없음) ─────────────────────────────────────────
 
   // help
   server.tool('help', 'List all available tools and their signatures', {}, async () => ({
@@ -80,10 +99,12 @@ function buildMcpServer() {
           'get_deploy_status(platform?)',
           'list_scheduled()',
           'cancel_scheduled(job_id)',
-          'transform_style(content, style, max_exaggeration?)',
+          'prepare_gemini_task(content, task_type, model?)',
+          'submit_gemini_result(task_id, result)',
+          'get_gemini_result(task_id)',
         ],
         platforms: Object.keys(PLATFORM_MAP),
-        styles: ['logical_thinking', 'keep_original'],
+        note: 'This server does NOT call AI APIs. Style transforms must be done by the calling AI.',
       }),
     }],
   }))
@@ -101,7 +122,21 @@ function buildMcpServer() {
     },
     async ({ platform, content, title = '', schedule, extra = {} }) => {
       if (schedule) {
-        const job_id = scheduleJob({ platform, content, title, at: schedule, extra })
+        const job_id = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        const job: ScheduledJob = { job_id, platform, content, title, at: schedule, extra }
+        session.scheduledJobs.set(job_id, job)
+        const delay = new Date(schedule).getTime() - Date.now()
+        if (delay > 0) {
+          setTimeout(async () => {
+            const j = session.scheduledJobs.get(job_id)
+            if (!j) return
+            try {
+              const poster = getPlatform(j.platform)
+              await poster.post(j.content, j.title, j.extra)
+            } catch (_) { /* best-effort */ }
+            session.scheduledJobs.delete(job_id)
+          }, delay)
+        }
         return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, scheduled: true, job_id, at: schedule }) }] }
       }
       const poster = getPlatform(platform)
@@ -143,8 +178,8 @@ function buildMcpServer() {
   )
 
   // list_scheduled
-  server.tool('list_scheduled', 'List all scheduled (pending) deployments', {}, async () => ({
-    content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, jobs: Array.from(scheduledJobs.values()) }) }],
+  server.tool('list_scheduled', 'List all scheduled (pending) deployments for this session', {}, async () => ({
+    content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, jobs: Array.from(session.scheduledJobs.values()) }) }],
   }))
 
   // cancel_scheduled
@@ -153,41 +188,63 @@ function buildMcpServer() {
     'Cancel a scheduled deployment by job ID',
     { job_id: z.string() },
     async ({ job_id }) => {
-      scheduledJobs.delete(job_id)
+      session.scheduledJobs.delete(job_id)
       return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, cancelled: job_id }) }] }
     },
   )
 
-  // transform_style
+  // ── GEMINI CLI 위임 툴 (AI 호출 없음 — cmd 반환만) ─────────────────────────
+
+  // prepare_gemini_task
   server.tool(
-    'transform_style',
-    'Transform content style using Claude API',
+    'prepare_gemini_task',
+    'Prepare a task for Gemini CLI execution. Returns a task_id and the CLI command to run. Does NOT call Gemini — the caller must run the cmd externally.',
     {
       content: z.string(),
-      style: z.enum(['logical_thinking', 'keep_original']),
-      max_exaggeration: z.number().int().min(0).default(1),
+      task_type: z.enum(['transform', 'analyze', 'summarize']),
+      model: z.string().optional().default('gemini-2.0-flash'),
     },
-    async ({ content, style, max_exaggeration }) => {
-      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+    async ({ content, task_type, model }) => {
+      const task_id = `gemini_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 
-      const styleInstructions: Record<string, string> = {
-        logical_thinking: `Rewrite the following content in a concise, logical style. Remove unnecessary filler words. Keep at most ${max_exaggeration} exaggerated expression(s). Return only the rewritten content.`,
-        keep_original: `Lightly polish the following content while preserving the author's original voice and style. Keep at most ${max_exaggeration} exaggerated expression(s). Return only the polished content.`,
+      const prompts: Record<string, string> = {
+        transform: `Rewrite the following content in a clear, concise style:\n\n${content}`,
+        analyze: `Analyze the following content and provide key insights:\n\n${content}`,
+        summarize: `Summarize the following content in 3-5 sentences:\n\n${content}`,
       }
+      const prompt = prompts[task_type]
+      session.geminiTasks.set(task_id, { task_id, status: 'pending', prompt, created: Date.now() })
 
-      const message = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
-        messages: [
-          {
-            role: 'user',
-            content: `${styleInstructions[style]}\n\n---\n${content}`,
-          },
-        ],
-      })
+      const escapedPrompt = prompt.replace(/'/g, "'\\''")
+      const cmd = `echo '${escapedPrompt}' | gemini --model "${model}" --output-format json`
 
-      const transformed = message.content[0].type === 'text' ? message.content[0].text : ''
-      return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, transformed }) }] }
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ task_id, cmd, status: 'pending' }) }] }
+    },
+  )
+
+  // submit_gemini_result
+  server.tool(
+    'submit_gemini_result',
+    'Submit the output from a Gemini CLI run back to the session.',
+    { task_id: z.string(), result: z.string() },
+    async ({ task_id, result }) => {
+      const task = session.geminiTasks.get(task_id)
+      if (!task) throw new Error(`Unknown task_id: ${task_id}`)
+      task.result = result
+      task.status = 'done'
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ ok: true, task_id }) }] }
+    },
+  )
+
+  // get_gemini_result
+  server.tool(
+    'get_gemini_result',
+    'Retrieve the result of a completed Gemini task.',
+    { task_id: z.string() },
+    async ({ task_id }) => {
+      const task = session.geminiTasks.get(task_id)
+      if (!task) throw new Error(`Unknown task_id: ${task_id}`)
+      return { content: [{ type: 'text' as const, text: JSON.stringify(task) }] }
     },
   )
 
@@ -197,9 +254,10 @@ function buildMcpServer() {
 // ── Next.js route handler ─────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
-  const server = buildMcpServer()
+  const sessionId = request.headers.get('Mcp-Session-Id') ?? crypto.randomUUID()
+  const server = buildMcpServer(sessionId)
   const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: undefined, // stateless mode
+    sessionIdGenerator: () => sessionId,
     enableJsonResponse: true,
   })
   await server.connect(transport)
@@ -207,16 +265,17 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const server = buildMcpServer()
+  const sessionId = request.headers.get('Mcp-Session-Id') ?? crypto.randomUUID()
+  const server = buildMcpServer(sessionId)
   const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
+    sessionIdGenerator: () => sessionId,
   })
   await server.connect(transport)
   return transport.handleRequest(request)
 }
 
 export async function GET() {
-  return new Response(JSON.stringify({ name: 'kyumyee MCP', version: '1.0.0', tools: 7 }), {
+  return new Response(JSON.stringify({ name: 'kyumyee MCP', version: '1.1.0', tools: 9 }), {
     headers: { 'Content-Type': 'application/json' },
   })
 }
