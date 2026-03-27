@@ -4,5 +4,5 @@
   "categories": ["Demo", "Frontend"],
   "tags": ["JavaScript", "HTML", "CSS"],
   "description": "기본 사칙연산 계산기. 순수 HTML/CSS/JS로 구현된 미니멀 계산기 데모.",
-  "demo": "https://kyumyee-calculator.vercel.app"
+  "demo": "https://calculator-mu-three-76.vercel.app"
 }
