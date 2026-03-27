@@ -85,8 +85,6 @@ function buildMcpServer(sessionId: string) {
   const session = getSession(sessionId)
   const server = new McpServer({ name: 'kyumyee', version: '1.1.0' })
 
-  // ── 플랫폼 배포 툴 (AI 호출 없음) ─────────────────────────────────────────
-
   // help
   server.tool('help', 'List all available tools and their signatures', {}, async () => ({
     content: [{
@@ -104,7 +102,6 @@ function buildMcpServer(sessionId: string) {
           'get_gemini_result(task_id)',
         ],
         platforms: Object.keys(PLATFORM_MAP),
-        note: 'This server does NOT call AI APIs. Style transforms must be done by the calling AI.',
       }),
     }],
   }))
@@ -193,12 +190,12 @@ function buildMcpServer(sessionId: string) {
     },
   )
 
-  // ── GEMINI CLI 위임 툴 (AI 호출 없음 — cmd 반환만) ─────────────────────────
+  // ── Gemini CLI 위임 툴 ──────────────────────────────────────────────────────
 
   // prepare_gemini_task
   server.tool(
     'prepare_gemini_task',
-    'Prepare a task for Gemini CLI execution. Returns a task_id and the CLI command to run. Does NOT call Gemini — the caller must run the cmd externally.',
+    'Prepare a task for Gemini CLI execution. Returns a task_id and the CLI command to run.',
     {
       content: z.string(),
       task_type: z.enum(['transform', 'analyze', 'summarize']),
