@@ -1,0 +1,16 @@
+{
+  "name": "delusionist-factory",
+  "title": "Delusionist Factory — 창의적 망상 문장 생성 파이프라인",
+  "description": "무작위 단어 오염과 단계적 정제를 통해 예상을 벗어나는 창의적 문장/전략을 생성하는 MCP 서버. 3단계 파이프라인(Chaining → Refining → Final)으로 AI 에이전트가 자율적으로 실행.",
+  "categories": ["MCP", "창의", "AI"],
+  "tags": ["MCP", "창의성", "파이프라인", "글쓰기", "프롬프트"],
+  "features": [
+    "3단계 파이프라인 자동 진행 (Step 1: Chaining / Step 2: Refining / Step 3: Final)",
+    "무작위 단어 풀 (한국어 91만 + 영어 46만 단어)",
+    "Gemini CLI 위임 또는 Self 모드 선택 (STEP1_EXECUTOR)",
+    "병렬 Gemini 워커 준비 (prepare_parallel_gemini_workers)",
+    "파일 잠금 기반 병렬 안전 쓰기 (locked_append)",
+    "get_request_guide — 첫 호출 시 전체 운영 매뉴얼 제공"
+  ],
+  "install_snippet": "{\n  \"mcpServers\": {\n    \"delusionist-factory\": {\n      \"command\": \"/path/to/venv/bin/python\",\n      \"args\": [\"/path/to/delusionist_factory_personal/mcp_server.py\"],\n      \"env\": { \"PYTHONUNBUFFERED\": \"1\" }\n    }\n  }\n}"
+}
