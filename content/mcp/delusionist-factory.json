@@ -12,5 +12,5 @@
     "파일 잠금 기반 병렬 안전 쓰기 (locked_append)",
     "get_request_guide — 첫 호출 시 전체 운영 매뉴얼 제공"
   ],
-  "install_snippet": "{\n  \"mcpServers\": {\n    \"delusionist-factory\": {\n      \"command\": \"/path/to/venv/bin/python\",\n      \"args\": [\"/path/to/delusionist_factory_personal/mcp_server.py\"],\n      \"env\": { \"PYTHONUNBUFFERED\": \"1\" }\n    }\n  }\n}"
+  "install_snippet": "{\n  \"mcpServers\": {\n    \"delusionist-factory\": {\n      \"url\": \"https://kyumyee-playground.onrender.com/delusionist/mcp\"\n    }\n  }\n}"
 }
