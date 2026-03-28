@@ -8,6 +8,7 @@ export interface Poster {
 export async function checkResponse(resp: Response, platform: string): Promise<void> {
   if (!resp.ok) {
     const text = await resp.text()
-    throw new Error(`${platform} API error ${resp.status}: ${text}`)
+    console.error(`[${platform}] API error ${resp.status}:`, text)
+    throw new Error(`${platform} API error: ${resp.status}`)
   }
 }

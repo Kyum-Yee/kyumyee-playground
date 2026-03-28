@@ -58,6 +58,31 @@ interface SessionState {
 
 const sessions = new Map<string, SessionState>()
 const SESSION_TTL_MS = 30 * 60 * 1000  // 30 minutes
+const MAX_SESSIONS = 500
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT = 60  // requests per minute
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + 60_000 })
+    return true
+  }
+  if (entry.count >= RATE_LIMIT) return false
+  entry.count++
+  return true
+}
+
+function evictExpired() {
+  const cutoff = Date.now() - SESSION_TTL_MS
+  for (const [id, s] of sessions) {
+    if (s.lastActive < cutoff) sessions.delete(id)
+  }
+}
+
+setInterval(evictExpired, 5 * 60_000)
 
 function getSession(id: string): SessionState {
   const s = sessions.get(id)
@@ -71,17 +96,9 @@ function getSession(id: string): SessionState {
   return fresh
 }
 
-function evictExpired() {
-  const cutoff = Date.now() - SESSION_TTL_MS
-  for (const [id, s] of sessions) {
-    if (s.lastActive < cutoff) sessions.delete(id)
-  }
-}
-
 // ── MCP Server factory ────────────────────────────────────────────────────────
 
 function buildMcpServer(sessionId: string) {
-  evictExpired()
   const session = getSession(sessionId)
   const server = new McpServer({ name: 'kyumyee', version: '1.1.0' })
 
@@ -112,14 +129,14 @@ function buildMcpServer(sessionId: string) {
     'Deploy content to a platform (immediately or scheduled)',
     {
       platform: z.enum(['notion', 'x', 'github', 'linkedin', 'threads', 'mastodon', 'reddit']),
-      content: z.string(),
+      content: z.string().min(1).max(50_000),
       title: z.string().optional(),
       schedule: z.string().optional().describe('ISO 8601 datetime for scheduled post'),
       extra: z.record(z.string(), z.unknown()).optional(),
     },
     async ({ platform, content, title = '', schedule, extra = {} }) => {
       if (schedule) {
-        const job_id = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        const job_id = `job_${crypto.randomUUID()}`
         const job: ScheduledJob = { job_id, platform, content, title, at: schedule, extra }
         session.scheduledJobs.set(job_id, job)
         const delay = new Date(schedule).getTime() - Date.now()
@@ -197,12 +214,17 @@ function buildMcpServer(sessionId: string) {
     'prepare_gemini_task',
     'Prepare a task for Gemini CLI execution. Returns a task_id and the CLI command to run.',
     {
-      content: z.string(),
+      content: z.string().min(1).max(50_000),
       task_type: z.enum(['transform', 'analyze', 'summarize']),
-      model: z.string().optional().default('gemini-2.0-flash'),
+      model: z.enum([
+        'gemini-2.0-flash',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+        'gemini-2.0-flash-exp',
+      ]).optional().default('gemini-2.0-flash'),
     },
     async ({ content, task_type, model }) => {
-      const task_id = `gemini_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+      const task_id = `gemini_${crypto.randomUUID()}`
 
       const prompts: Record<string, string> = {
         transform: `Rewrite the following content in a clear, concise style:\n\n${content}`,
@@ -212,8 +234,8 @@ function buildMcpServer(sessionId: string) {
       const prompt = prompts[task_type]
       session.geminiTasks.set(task_id, { task_id, status: 'pending', prompt, created: Date.now() })
 
-      const escapedPrompt = prompt.replace(/'/g, "'\\''")
-      const cmd = `echo '${escapedPrompt}' | gemini --model "${model}" --output-format json`
+      const b64 = Buffer.from(prompt).toString('base64')
+      const cmd = `echo "${b64}" | base64 -d | gemini --model "${model}" --output-format json`
 
       return { content: [{ type: 'text' as const, text: JSON.stringify({ task_id, cmd, status: 'pending' }) }] }
     },
@@ -251,7 +273,22 @@ function buildMcpServer(sessionId: string) {
 // ── Next.js route handler ─────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
-  const sessionId = request.headers.get('Mcp-Session-Id') ?? crypto.randomUUID()
+  const ip = (request.headers.get('x-forwarded-for') ?? 'unknown').split(',')[0].trim()
+  if (!checkRateLimit(ip)) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), {
+      status: 429, headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  evictExpired()
+  if (sessions.size >= MAX_SESSIONS) {
+    return new Response(JSON.stringify({ error: 'Server busy' }), {
+      status: 503, headers: { 'Content-Type': 'application/json' },
+    })
+  }
+  const clientSessionId = request.headers.get('Mcp-Session-Id')
+  const sessionId = (clientSessionId && sessions.has(clientSessionId))
+    ? clientSessionId
+    : crypto.randomUUID()
   const server = buildMcpServer(sessionId)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => sessionId,
@@ -262,7 +299,10 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const sessionId = request.headers.get('Mcp-Session-Id') ?? crypto.randomUUID()
+  const clientSessionId = request.headers.get('Mcp-Session-Id')
+  const sessionId = (clientSessionId && sessions.has(clientSessionId))
+    ? clientSessionId
+    : crypto.randomUUID()
   const server = buildMcpServer(sessionId)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => sessionId,

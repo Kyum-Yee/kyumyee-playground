@@ -20,6 +20,7 @@ export function getProjects(filterTag?: string, filterCategory?: string): Projec
 }
 
 export function getProject(slug: string): ProjectMeta | null {
+  if (!/^[a-zA-Z0-9_-]+$/.test(slug)) return null
   const file = path.join(PROJECTS_DIR, `${slug}.json`)
   if (!fs.existsSync(file)) return null
   const raw = fs.readFileSync(file, 'utf-8')

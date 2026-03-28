@@ -17,27 +17,33 @@ export class ThreadsPoster implements Poster {
     const createUrl = new URL(`https://graph.threads.net/v1.0/${this.userId}/threads`)
     createUrl.searchParams.set('media_type', 'TEXT')
     createUrl.searchParams.set('text', content)
-    createUrl.searchParams.set('access_token', this.token)
 
-    const createResp = await fetch(createUrl.toString(), { method: 'POST' })
+    const createResp = await fetch(createUrl.toString(), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.token}` },
+    })
     await checkResponse(createResp, 'Threads')
     const { id: containerId } = await createResp.json()
 
     // Step 2: publish
     const publishUrl = new URL(`https://graph.threads.net/v1.0/${this.userId}/threads_publish`)
     publishUrl.searchParams.set('creation_id', containerId)
-    publishUrl.searchParams.set('access_token', this.token)
 
-    const publishResp = await fetch(publishUrl.toString(), { method: 'POST' })
+    const publishResp = await fetch(publishUrl.toString(), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.token}` },
+    })
     await checkResponse(publishResp, 'Threads')
     const { id } = await publishResp.json()
     return id as string
   }
 
   async delete(postId: string): Promise<void> {
-    const url = new URL(`https://graph.threads.net/v1.0/${postId}`)
-    url.searchParams.set('access_token', this.token)
-    const resp = await fetch(url.toString(), { method: 'DELETE' })
+    const url = `https://graph.threads.net/v1.0/${postId}`
+    const resp = await fetch(url, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${this.token}` },
+    })
     await checkResponse(resp, 'Threads')
   }
 }

@@ -20,6 +20,7 @@ export function getMCPs(filterTag?: string, filterCategory?: string): MCPMeta[] 
 }
 
 export function getMCP(slug: string): MCPMeta | null {
+  if (!/^[a-zA-Z0-9_-]+$/.test(slug)) return null
   const file = path.join(MCP_DIR, `${slug}.json`)
   if (!fs.existsSync(file)) return null
   const raw = fs.readFileSync(file, 'utf-8')

@@ -2,7 +2,14 @@ import { checkResponse, type Poster } from './base'
 
 export class MastodonPoster implements Poster {
   private token = process.env.MASTODON_ACCESS_TOKEN ?? ''
-  private instance = process.env.MASTODON_INSTANCE ?? 'mastodon.social'
+  private instance = MastodonPoster.validateInstance(process.env.MASTODON_INSTANCE ?? 'mastodon.social')
+
+  private static validateInstance(raw: string): string {
+    if (!/^[a-zA-Z0-9]([a-zA-Z0-9\-.]*)[a-zA-Z0-9]$/.test(raw) || /^\d+\.\d+/.test(raw)) {
+      throw new Error(`Invalid MASTODON_INSTANCE: ${raw}`)
+    }
+    return raw
+  }
 
   isConfigured() {
     return Boolean(this.token)

@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { marked } from 'marked'
+import DOMPurify from 'isomorphic-dompurify'
 import type { BlogMeta } from './content'
 
 const BLOG_DIR = path.join(process.cwd(), 'content/blog')
@@ -30,13 +31,17 @@ export function getMDPosts(filterTag?: string, filterCategory?: string): BlogMet
 }
 
 export function getPost(slug: string): { meta: BlogMeta; html: string } | null {
+  if (!/^[a-zA-Z0-9_-]+$/.test(slug)) return null
   const file = path.join(BLOG_DIR, `${slug}.md`)
   if (!fs.existsSync(file)) return null
 
   const raw = fs.readFileSync(file, 'utf-8')
   const { data, content } = matter(raw)
 
-  const html = marked(content) as string
+  const html = DOMPurify.sanitize(marked(content) as string, {
+    ALLOWED_TAGS: ['h1','h2','h3','h4','p','ul','ol','li','strong','em','code','pre','blockquote','a','img'],
+    ALLOWED_ATTR: ['href','src','alt','class','id'],
+  })
 
   return {
     meta: {

@@ -10,6 +10,11 @@ export async function generateStaticParams() {
   return getProjects().map(p => ({ slug: p.slug }))
 }
 
+function safeUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined
+  return url.startsWith('https://') ? url : undefined
+}
+
 export default async function ProjectDetailPage({ params }: Props) {
   const { slug } = await params
   const project = getProject(slug)
@@ -54,10 +59,10 @@ export default async function ProjectDetailPage({ params }: Props) {
       </header>
 
       {/* GitHub link */}
-      {project.github && (
+      {safeUrl(project.github) && (
         <div style={{ marginBottom: '2rem' }}>
           <a
-            href={project.github}
+            href={safeUrl(project.github)}
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link"
@@ -77,11 +82,11 @@ export default async function ProjectDetailPage({ params }: Props) {
       )}
 
       {/* Demo project: external link */}
-      {project.demo && (
+      {safeUrl(project.demo) && (
         <div>
           <div className="section-head"><span>01</span> 데모</div>
           <a
-            href={project.demo}
+            href={safeUrl(project.demo)}
             target="_blank"
             rel="noopener noreferrer"
             className="nav-link"
