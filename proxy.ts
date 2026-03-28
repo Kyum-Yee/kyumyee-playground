@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/api/mcp')) {
     const expectedKey = process.env.MCP_API_KEY
     if (!expectedKey) return NextResponse.next() // dev: env 미설정 시 통과
