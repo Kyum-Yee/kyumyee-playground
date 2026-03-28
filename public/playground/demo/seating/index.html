@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>자리배치</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #07090C;
+      --surface:     #0D1117;
+      --surface-2:   #131B24;
+      --border:      #1C2838;
+      --border-hi:   #2A3D52;
+      --text:        #B8C4D0;
+      --text-dim:    #4E5E6E;
+      --text-bright: #E2EBF3;
+      --accent:      oklch(0.71 0.15 166);
+      --accent-dim:  oklch(0.32 0.08 166);
+      --amber:       oklch(0.80 0.14 85);
+      --amber-dim:   oklch(0.36 0.08 85);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      font-size: 15px;
+    }
+
+    /* grain overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.028;
+    }
+
+    /* ── Layout ── */
+    .app {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 300px;
+      min-width: 300px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-hi) transparent;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border-hi); }
+    .sidebar::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+    .sidebar-inner {
+      padding: 1.5rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* ── Section head ── */
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 0.75rem;
+    }
+    .section-head::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Grid size inputs ── */
+    .grid-size {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--text);
+    }
+
+    .size-input {
+      width: 44px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border-hi);
+      color: var(--text-bright);
+      font-family: inherit;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 0.2rem 0.1rem;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .size-input::-webkit-inner-spin-button,
+    .size-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .size-input:focus { border-bottom-color: var(--accent); color: var(--accent); }
+
+    .size-label {
+      color: var(--text-dim);
+      font-size: 0.7rem;
+    }
+
+    /* ── List (chips) ── */
+    .chips-area {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem 0.35rem;
+      min-height: 28px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.7rem;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.45rem 0.2rem 0.5rem;
+      border-radius: 0;
+      cursor: default;
+      transition: border-color 0.1s, color 0.1s;
+      background: var(--surface-2);
+      user-select: none;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--text-bright); }
+    .chip .remove {
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: 0.65rem;
+      line-height: 1;
+      padding: 0 0.1rem;
+      transition: color 0.1s;
+    }
+    .chip .remove:hover { color: var(--accent); }
+
+    .chip.removed-item {
+      border-color: var(--amber-dim);
+      color: var(--amber);
+      opacity: 0.7;
+    }
+
+    /* chip input */
+    .chip-input-wrap {
+      position: relative;
+    }
+    .chip-text-input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border-hi);
+      color: var(--text-bright);
+      font-family: inherit;
+      font-size: 0.75rem;
+      padding: 0.15rem 0.2rem;
+      outline: none;
+      width: 120px;
+    }
+    .chip-text-input::placeholder { color: var(--text-dim); }
+    .chip-text-input:focus { border-bottom-color: var(--accent); }
+
+    .btn-add-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border-radius: 0;
+      transition: border-color 0.1s, color 0.1s;
+    }
+    .btn-add-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+    .list-hint {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      margin-top: 0.25rem;
+    }
+
+    /* removed notice */
+    .removed-notice {
+      display: none;
+      font-size: 0.65rem;
+      color: var(--amber);
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .removed-notice.visible { display: flex; }
+    .btn-remove-deleted {
+      font-family: inherit;
+      font-size: 0.65rem;
+      border: 1px solid var(--amber-dim);
+      background: transparent;
+      color: var(--amber);
+      padding: 0.15rem 0.4rem;
+      cursor: pointer;
+      border-radius: 0;
+      transition: background 0.1s;
+    }
+    .btn-remove-deleted:hover { background: var(--amber-dim); }
+
+    /* ── Range ── */
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+    .range-input {
+      width: 44px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border-hi);
+      color: var(--text-bright);
+      font-family: inherit;
+      font-size: 0.8rem;
+      text-align: center;
+      padding: 0.15rem 0.1rem;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .range-input::-webkit-inner-spin-button,
+    .range-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .range-input:focus { border-bottom-color: var(--accent); color: var(--accent); }
+
+    .range-count {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      margin-left: 0.2rem;
+    }
+
+    /* ── Options ── */
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.72rem;
+      color: var(--text);
+      cursor: pointer;
+      user-select: none;
+    }
+    .option-row input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      border: 1px solid var(--border-hi);
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .option-row input[type="checkbox"]:checked {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .option-row input[type="checkbox"]:checked::after {
+      content: '✓';
+      position: absolute;
+      top: -1px;
+      left: 1px;
+      font-size: 10px;
+      color: var(--accent);
+      line-height: 1.3;
+    }
+
+    .countdown-secs-input {
+      width: 32px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border-hi);
+      color: var(--text-bright);
+      font-family: inherit;
+      font-size: 0.78rem;
+      text-align: center;
+      padding: 0.1rem;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .countdown-secs-input::-webkit-inner-spin-button,
+    .countdown-secs-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .countdown-secs-input:focus { border-bottom-color: var(--accent); }
+
+    /* ── Action buttons ── */
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .btn-go {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.7rem 1rem;
+      cursor: pointer;
+      border-radius: 0;
+      transition: filter 0.1s;
+    }
+    .btn-go:hover { filter: brightness(1.1); }
+    .btn-go:active { filter: brightness(0.9); }
+
+    .btn-reset {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      font-family: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      border-radius: 0;
+      transition: border-color 0.1s, color 0.1s;
+    }
+    .btn-reset:hover { border-color: var(--text-dim); color: var(--text); }
+
+    /* ── Main / Grid ── */
+    .main {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .grid-wrap {
+      overflow: auto;
+      padding: 1rem;
+      max-width: 100%;
+      max-height: 100%;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-hi) transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+    .grid-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+    .grid-wrap::-webkit-scrollbar-thumb { background: var(--border-hi); }
+
+    .grid-table {
+      display: grid;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .cell {
+      background: var(--surface);
+      width: var(--cell-size, 72px);
+      height: var(--cell-size, 72px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.12s, border-left-color 0.12s;
+      overflow: hidden;
+      user-select: none;
+    }
+    .cell:hover { background: var(--surface-2); }
+
+    .cell-index {
+      font-size: 0.55rem;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+    }
+
+    .cell.excluded {
+      background: var(--bg);
+      cursor: pointer;
+    }
+    .cell.excluded .cell-index { display: none; }
+    .cell.excluded::after {
+      content: '–';
+      color: var(--text-dim);
+      font-size: 1rem;
+      font-weight: 300;
+    }
+    .cell.excluded { border-left: 2px dashed var(--border-hi); }
+
+    .cell.placed {
+      background: var(--surface-2);
+      border-left: 2px solid var(--accent);
+      cursor: default;
+    }
+    .cell.placed:hover { background: var(--surface-2); }
+    .cell.placed .cell-index { display: none; }
+
+    .cell-text {
+      display: none;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-bright);
+      text-align: center;
+      padding: 0 0.4rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+      letter-spacing: -0.01em;
+    }
+    .cell.placed .cell-text { display: block; }
+
+    /* empty state */
+    .empty-state {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .empty-state span {
+      display: block;
+      font-size: 0.6rem;
+      margin-top: 0.4rem;
+      color: var(--border-hi);
+    }
+
+    /* ── Countdown Overlay ── */
+    .countdown-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(7, 9, 12, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      display: none;
+    }
+    .countdown-overlay.active { display: flex; }
+
+    .countdown-num {
+      font-size: 12rem;
+      font-weight: 200;
+      color: var(--accent);
+      letter-spacing: -0.06em;
+      line-height: 1;
+      animation: fadeIn 0.2s ease;
+    }
+    .countdown-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-top: 1rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .cell.placed { animation: fadeUp 0.3s cubic-bezier(0.16,1,0.3,1) both; }
+
+    /* stagger on cells */
+    .cell.placed:nth-child(1)  { animation-delay: 0ms; }
+    .cell.placed:nth-child(2)  { animation-delay: 30ms; }
+    .cell.placed:nth-child(3)  { animation-delay: 60ms; }
+    .cell.placed:nth-child(4)  { animation-delay: 90ms; }
+    .cell.placed:nth-child(5)  { animation-delay: 120ms; }
+    .cell.placed:nth-child(6)  { animation-delay: 150ms; }
+    .cell.placed:nth-child(7)  { animation-delay: 180ms; }
+    .cell.placed:nth-child(8)  { animation-delay: 210ms; }
+
+    /* ── Footer ── */
+    .footer {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      padding: 0.4rem 0.75rem;
+      font-size: 9px;
+      color: var(--text-dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      .app { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        min-width: 0;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        max-height: 55vh;
+      }
+      .main { min-height: 45vh; }
+      .countdown-num { font-size: 7rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <!-- [01] GRID SIZE -->
+      <section>
+        <div class="section-head">[01] Grid Size</div>
+        <div class="grid-size">
+          <span class="size-label">행</span>
+          <input class="size-input" type="number" id="rows" value="4" min="1" max="30">
+          <span class="size-label">×</span>
+          <span class="size-label">열</span>
+          <input class="size-input" type="number" id="cols" value="5" min="1" max="30">
+          <span class="size-label" id="total-label" style="margin-left:0.3rem;color:var(--text-dim)">= 20</span>
+        </div>
+      </section>
+
+      <!-- [02] LIST -->
+      <section>
+        <div class="section-head">[02] List</div>
+        <div class="chips-area" id="chips-area"></div>
+        <div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;">
+          <input class="chip-text-input" id="chip-input" type="text" placeholder="이름, 콤마로 구분…">
+          <button class="btn-add-chip" id="btn-add-chip" title="추가">+</button>
+        </div>
+        <div class="list-hint">콤마 또는 스페이스로 여러 개 한번에 입력</div>
+        <div class="removed-notice" id="removed-notice">
+          <span id="removed-text"></span>
+          <button class="btn-remove-deleted" id="btn-clear-removed">목록에서 삭제</button>
+        </div>
+      </section>
+
+      <!-- [03] AUTO NUMBERS -->
+      <section>
+        <div class="section-head">[03] 번호 자동 추가</div>
+        <div class="range-row">
+          <span>범위</span>
+          <input class="range-input" type="number" id="range-start" value="1" min="0">
+          <span>~</span>
+          <input class="range-input" type="number" id="range-end" value="20" min="0">
+          <span class="range-count" id="range-count">(20개)</span>
+        </div>
+      </section>
+
+      <!-- [04] OPTIONS -->
+      <section>
+        <div class="section-head">[04] 옵션</div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+          <label class="option-row">
+            <input type="checkbox" id="opt-duplicate">
+            <span>중복 허용 (pool &gt; 셀 수일 때)</span>
+          </label>
+          <label class="option-row">
+            <input type="checkbox" id="opt-countdown" checked>
+            <span>카운트다운</span>
+            <input class="countdown-secs-input" id="countdown-secs" type="number" value="3" min="1" max="9">
+            <span style="font-size:0.65rem;color:var(--text-dim)">초</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <div class="btn-group">
+        <button class="btn-go" id="btn-go">배치하기</button>
+        <button class="btn-reset" id="btn-reset">초기화</button>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main" id="main">
+    <div class="grid-wrap" id="grid-wrap">
+      <div class="empty-state" id="empty-state">
+        자리 없음
+        <span>행·열을 설정하고 배치하기를 누르세요</span>
+      </div>
+      <div class="grid-table" id="grid-table" style="display:none;"></div>
+    </div>
+
+    <!-- Countdown Overlay -->
+    <div class="countdown-overlay" id="countdown-overlay">
+      <div class="countdown-num" id="countdown-num">3</div>
+      <div class="countdown-label">자리 배치 중</div>
+    </div>
+
+    <div class="footer">kyumyee / 자리배치</div>
+  </main>
+</div>
+
+<script>
+  // ── State ──
+  const state = {
+    rows: 4,
+    cols: 5,
+    excluded: new Set(),      // "r,c"
+    listItems: [],            // user custom strings
+    rangeStart: 1,
+    rangeEnd: 20,
+    allowDuplicates: false,
+    countdownEnabled: true,
+    countdownSecs: 3,
+    phase: 'config',          // 'config' | 'countdown' | 'result'
+    grid: null,               // string[][]
+    removedItems: [],
+    _rangeManual: false,      // user edited rangeEnd manually
+  }
+
+  // ── DOM refs ──
+  const rowsInput      = document.getElementById('rows')
+  const colsInput      = document.getElementById('cols')
+  const totalLabel     = document.getElementById('total-label')
+  const chipsArea      = document.getElementById('chips-area')
+  const chipInput      = document.getElementById('chip-input')
+  const btnAddChip     = document.getElementById('btn-add-chip')
+  const rangeStart     = document.getElementById('range-start')
+  const rangeEnd       = document.getElementById('range-end')
+  const rangeCount     = document.getElementById('range-count')
+  const optDuplicate   = document.getElementById('opt-duplicate')
+  const optCountdown   = document.getElementById('opt-countdown')
+  const cdSecs         = document.getElementById('countdown-secs')
+  const btnGo          = document.getElementById('btn-go')
+  const btnReset       = document.getElementById('btn-reset')
+  const gridTable      = document.getElementById('grid-table')
+  const gridWrap       = document.getElementById('grid-wrap')
+  const emptyState     = document.getElementById('empty-state')
+  const cdOverlay      = document.getElementById('countdown-overlay')
+  const cdNum          = document.getElementById('countdown-num')
+  const removedNotice  = document.getElementById('removed-notice')
+  const removedText    = document.getElementById('removed-text')
+  const btnClearRemoved = document.getElementById('btn-clear-removed')
+
+  // ── Init ──
+  function init() {
+    state.rows = parseInt(rowsInput.value) || 4
+    state.cols = parseInt(colsInput.value) || 5
+    updateTotalLabel()
+    renderChips()
+    syncRangeDefaults()
+    renderGrid(false)
+  }
+
+  function updateTotalLabel() {
+    totalLabel.textContent = `= ${state.rows * state.cols}`
+  }
+
+  // ── Available cell count ──
+  function availableCount() {
+    return state.rows * state.cols - state.excluded.size
+  }
+
+  // ── Auto range sync ──
+  function syncRangeDefaults() {
+    const avail = availableCount()
+    const listCount = state.listItems.length
+    const autoCount = Math.max(0, avail - listCount)
+    const newEnd = state.rangeStart + autoCount - 1
+
+    if (!state._rangeManual) {
+      state.rangeEnd = Math.max(state.rangeStart - 1, newEnd)
+      rangeEnd.value = state.rangeEnd
+    }
+
+    updateRangeCount()
+  }
+
+  function updateRangeCount() {
+    const s = parseInt(rangeStart.value) || 1
+    const e = parseInt(rangeEnd.value) || 0
+    const cnt = e >= s ? e - s + 1 : 0
+    rangeCount.textContent = `(${cnt}개)`
+  }
+
+  // ── Build pool ──
+  function buildPool() {
+    const s = state.rangeStart
+    const e = state.rangeEnd
+    const nums = []
+    for (let i = s; i <= e; i++) nums.push(String(i))
+    const pool = [...state.listItems, ...nums]
+    return pool
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  }
+
+  // ── Placement ──
+  function doPlace() {
+    const avail = availableCount()
+    let pool = buildPool()
+    state.removedItems = []
+
+    if (!state.allowDuplicates) {
+      if (pool.length > avail) {
+        // shuffle and crop
+        shuffle(pool)
+        state.removedItems = pool.slice(avail)
+        pool = pool.slice(0, avail)
+      }
+    } else {
+      // fill with repeats if needed
+      while (pool.length < avail) {
+        const base = buildPool()
+        if (base.length === 0) break
+        pool = [...pool, ...shuffle([...base])]
+      }
+      pool = pool.slice(0, avail)
+    }
+
+    shuffle(pool)
+
+    // build grid
+    state.grid = Array.from({ length: state.rows }, () => Array(state.cols).fill(null))
+    let idx = 0
+    for (let r = 0; r < state.rows; r++) {
+      for (let c = 0; c < state.cols; c++) {
+        if (!state.excluded.has(`${r},${c}`)) {
+          state.grid[r][c] = pool[idx] !== undefined ? pool[idx] : null
+          idx++
+        }
+      }
+    }
+
+    state.phase = 'result'
+    renderGrid(true)
+
+    // show removed notice
+    if (state.removedItems.length > 0) {
+      removedText.textContent = `미배치: ${state.removedItems.join(', ')}`
+      removedNotice.classList.add('visible')
+    } else {
+      removedNotice.classList.remove('visible')
+    }
+  }
+
+  // ── Countdown ──
+  function startCountdown() {
+    state.phase = 'countdown'
+    let secs = parseInt(cdSecs.value) || 3
+    cdNum.textContent = secs
+    cdNum.style.animation = 'none'
+    requestAnimationFrame(() => {
+      cdNum.style.animation = ''
+    })
+    cdOverlay.classList.add('active')
+
+    const tick = setInterval(() => {
+      secs--
+      if (secs <= 0) {
+        clearInterval(tick)
+        cdNum.textContent = '!'
+        cdNum.style.animation = 'none'
+        requestAnimationFrame(() => { cdNum.style.animation = '' })
+        setTimeout(() => {
+          cdOverlay.classList.remove('active')
+          doPlace()
+        }, 300)
+      } else {
+        cdNum.style.animation = 'none'
+        cdNum.textContent = secs
+        requestAnimationFrame(() => { cdNum.style.animation = '' })
+      }
+    }, 1000)
+  }
+
+  // ── Render Grid ──
+  function calcCellSize() {
+    const wrap = gridWrap
+    const W = wrap.clientWidth - 32
+    const H = wrap.clientHeight - 32
+    const byW = Math.floor(W / state.cols)
+    const byH = Math.floor(H / state.rows)
+    return Math.max(36, Math.min(byW, byH, 120))
+  }
+
+  function renderGrid(placed) {
+    gridTable.innerHTML = ''
+    gridTable.style.display = 'grid'
+    gridTable.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size, 72px))`
+    emptyState.style.display = 'none'
+    gridTable.style.display = 'grid'
+
+    const cellSize = calcCellSize()
+    gridTable.style.setProperty('--cell-size', `${cellSize}px`)
+
+    for (let r = 0; r < state.rows; r++) {
+      for (let c = 0; c < state.cols; c++) {
+        const cell = document.createElement('div')
+        cell.className = 'cell'
+        cell.dataset.r = r
+        cell.dataset.c = c
+
+        const key = `${r},${c}`
+        const isExcluded = state.excluded.has(key)
+
+        if (isExcluded) {
+          cell.classList.add('excluded')
+        } else if (placed && state.grid && state.grid[r][c] !== null) {
+          cell.classList.add('placed')
+          const txt = document.createElement('div')
+          txt.className = 'cell-text'
+          txt.textContent = state.grid[r][c]
+          // dynamic font size
+          const len = String(state.grid[r][c]).length
+          if (len > 5) txt.style.fontSize = `${Math.max(0.55, 0.75 - (len - 5) * 0.05)}rem`
+          cell.appendChild(txt)
+        } else {
+          const idx = document.createElement('div')
+          idx.className = 'cell-index'
+          idx.textContent = `${r+1},${c+1}`
+          cell.appendChild(idx)
+        }
+
+        cell.addEventListener('click', () => onCellClick(r, c))
+        gridTable.appendChild(cell)
+      }
+    }
+  }
+
+  function onCellClick(r, c) {
+    if (state.phase === 'countdown') return
+    const key = `${r},${c}`
+    if (state.excluded.has(key)) {
+      state.excluded.delete(key)
+    } else {
+      state.excluded.add(key)
+    }
+    syncRangeDefaults()
+    renderGrid(state.phase === 'result')
+  }
+
+  // ── Chips ──
+  function renderChips() {
+    chipsArea.innerHTML = ''
+    state.listItems.forEach((item, i) => {
+      const chip = document.createElement('span')
+      chip.className = 'chip'
+      chip.innerHTML = `${escHtml(item)} <span class="remove" data-i="${i}">×</span>`
+      chipsArea.appendChild(chip)
+    })
+    chipsArea.querySelectorAll('.remove').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const idx = parseInt(e.target.dataset.i)
+        state.listItems.splice(idx, 1)
+        syncRangeDefaults()
+        renderChips()
+      })
+    })
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  }
+
+  function parseAndAddChips(raw) {
+    // split by comma or space sequences
+    const parts = raw.split(/[,\s]+/).map(s => s.trim()).filter(Boolean)
+    parts.forEach(p => {
+      if (!state.listItems.includes(p)) state.listItems.push(p)
+    })
+    syncRangeDefaults()
+    renderChips()
+  }
+
+  btnAddChip.addEventListener('click', () => {
+    const v = chipInput.value.trim()
+    if (v) { parseAndAddChips(v); chipInput.value = '' }
+    chipInput.focus()
+  })
+
+  chipInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const v = chipInput.value.trim()
+      if (v) { parseAndAddChips(v); chipInput.value = '' }
+    }
+  })
+
+  // ── Grid size inputs ──
+  rowsInput.addEventListener('change', () => {
+    state.rows = Math.max(1, Math.min(30, parseInt(rowsInput.value) || 1))
+    rowsInput.value = state.rows
+    state.excluded.clear()
+    state._rangeManual = false
+    updateTotalLabel()
+    syncRangeDefaults()
+    if (state.phase === 'result') state.phase = 'config'
+    renderGrid(false)
+  })
+
+  colsInput.addEventListener('change', () => {
+    state.cols = Math.max(1, Math.min(30, parseInt(colsInput.value) || 1))
+    colsInput.value = state.cols
+    state.excluded.clear()
+    state._rangeManual = false
+    updateTotalLabel()
+    syncRangeDefaults()
+    if (state.phase === 'result') state.phase = 'config'
+    renderGrid(false)
+  })
+
+  // ── Range inputs ──
+  rangeStart.addEventListener('input', () => {
+    state.rangeStart = parseInt(rangeStart.value) || 1
+    state._rangeManual = true
+    updateRangeCount()
+  })
+
+  rangeEnd.addEventListener('input', () => {
+    state.rangeEnd = parseInt(rangeEnd.value) || 0
+    state._rangeManual = true
+    updateRangeCount()
+  })
+
+  rangeStart.addEventListener('blur', () => {
+    const s = parseInt(rangeStart.value) || 1
+    const e = parseInt(rangeEnd.value) || 0
+    if (s > e && e > 0) rangeEnd.value = s
+    state.rangeStart = s
+    state.rangeEnd = parseInt(rangeEnd.value) || s
+    updateRangeCount()
+  })
+
+  // ── Options ──
+  optDuplicate.addEventListener('change', () => {
+    state.allowDuplicates = optDuplicate.checked
+  })
+
+  optCountdown.addEventListener('change', () => {
+    state.countdownEnabled = optCountdown.checked
+    cdSecs.disabled = !state.countdownEnabled
+  })
+
+  cdSecs.addEventListener('change', () => {
+    state.countdownSecs = Math.max(1, Math.min(9, parseInt(cdSecs.value) || 3))
+    cdSecs.value = state.countdownSecs
+  })
+
+  // ── Go ──
+  btnGo.addEventListener('click', () => {
+    if (state.phase === 'countdown') return
+    state.rows = parseInt(rowsInput.value) || 4
+    state.cols = parseInt(colsInput.value) || 5
+    state.rangeStart = parseInt(rangeStart.value) || 1
+    state.rangeEnd = parseInt(rangeEnd.value) || 0
+    renderGrid(false)
+
+    if (state.countdownEnabled) {
+      startCountdown()
+    } else {
+      doPlace()
+    }
+  })
+
+  // ── Reset ──
+  btnReset.addEventListener('click', () => {
+    state.excluded.clear()
+    state.grid = null
+    state.phase = 'config'
+    state.removedItems = []
+    state._rangeManual = false
+    cdOverlay.classList.remove('active')
+    removedNotice.classList.remove('visible')
+    syncRangeDefaults()
+    renderGrid(false)
+  })
+
+  // ── Clear removed ──
+  btnClearRemoved.addEventListener('click', () => {
+    state.listItems = state.listItems.filter(x => !state.removedItems.includes(x))
+    state.removedItems = []
+    removedNotice.classList.remove('visible')
+    syncRangeDefaults()
+    renderChips()
+  })
+
+  // ── Resize observer ──
+  const ro = new ResizeObserver(() => {
+    if (gridTable.style.display !== 'none') {
+      const cellSize = calcCellSize()
+      gridTable.style.setProperty('--cell-size', `${cellSize}px`)
+    }
+  })
+  ro.observe(gridWrap)
+
+  // ── Keyboard ──
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.activeElement !== chipInput) {
+      if (state.phase !== 'countdown') btnGo.click()
+    }
+    if (e.key === 'Escape') {
+      if (state.phase === 'countdown') {
+        cdOverlay.classList.remove('active')
+        state.phase = 'config'
+      }
+    }
+  })
+
+  // ── Boot ──
+  init()
+  renderGrid(false)
+</script>
+</body>
+</html>

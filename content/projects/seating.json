@@ -1,0 +1,8 @@
+{
+  "title": "자리배치",
+  "type": "non-ai",
+  "categories": ["Demo", "Frontend", "유틸리티"],
+  "tags": ["JavaScript", "HTML", "CSS", "랜덤", "교실"],
+  "description": "n×m 그리드에 이름 목록을 랜덤 배치. 특정 자리 제외, 자동 번호 생성, 카운트다운 연출 지원.",
+  "demo": "https://kyumyee-playground.vercel.app/playground/demo/seating"
+}
