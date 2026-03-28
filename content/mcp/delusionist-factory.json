@@ -12,5 +12,11 @@
     "파일 잠금 기반 병렬 안전 쓰기 (locked_append)",
     "get_request_guide — 첫 호출 시 전체 운영 매뉴얼 제공"
   ],
-  "install_snippet": "{\n  \"mcpServers\": {\n    \"delusionist-factory\": {\n      \"url\": \"https://kyumyee-playground.onrender.com/delusionist/mcp\"\n    }\n  }\n}"
+  "notes": [
+    "URL 끝에 '/' 필수: https://kyumyee-playground.onrender.com/delusionist/mcp/ (없으면 307 redirect)",
+    "initialize 먼저 → 응답 헤더 'Mcp-Session-Id' 수신 → 이후 모든 요청에 포함",
+    "Render 무료 플랜 cold start: 비활동 15분 후 spin down, 첫 요청 30~50초 소요",
+    "세션은 서버 재시작 시 초기화됨 (Render free 단일 인스턴스 인메모리)"
+  ],
+  "install_snippet": "{\n  \"mcpServers\": {\n    \"delusionist-factory\": {\n      \"url\": \"https://kyumyee-playground.onrender.com/delusionist/mcp/\"\n    }\n  }\n}"
 }

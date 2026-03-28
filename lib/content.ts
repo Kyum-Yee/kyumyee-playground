@@ -36,5 +36,6 @@ export interface MCPMeta {
   tags: string[]
   install_snippet?: string
   features?: string[]
+  notes?: string[]
   blog_slug?: string
 }

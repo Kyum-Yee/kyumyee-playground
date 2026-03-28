@@ -63,6 +63,20 @@ export default async function MCPDetailPage({ params }: Props) {
         </section>
       )}
 
+      {mcp.notes && mcp.notes.length > 0 && (
+        <section style={{ marginBottom: '2.5rem' }}>
+          <div className="section-head">NOTES</div>
+          <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            {mcp.notes.map(n => (
+              <li key={n} className="font-mono text-sm" style={{ color: 'var(--text-dim)', paddingLeft: '1.25rem', position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 0, color: 'var(--text-dim)' }}>!</span>
+                {n}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {mcp.install_snippet && (
         <section>
           <div className="section-head">INSTALL (.mcp.json)</div>
