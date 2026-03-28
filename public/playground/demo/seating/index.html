@@ -636,7 +636,7 @@
     countdownSecs: 3,
     phase: 'config',
     grid: null,
-    removedItems: [],
+    placedItems: [],  // listItems that were actually assigned to cells
   }
 
   // ── Range state ──
@@ -737,12 +737,10 @@
   function doPlace() {
     const avail = availableCount()
     let pool = buildPool()
-    state.removedItems = []
 
     if (!state.allowDuplicates) {
       if (pool.length > avail) {
         shuffle(pool)
-        state.removedItems = pool.slice(avail)
         pool = pool.slice(0, avail)
       }
     } else {
@@ -767,11 +765,15 @@
       }
     }
 
+    // Track which listItems were actually placed
+    const inGrid = new Set(state.grid.flat().filter(v => v !== null))
+    state.placedItems = state.listItems.filter(item => inGrid.has(item))
+
     state.phase = 'result'
     renderGrid(true)
 
-    if (state.removedItems.length > 0) {
-      removedText.textContent = `미배치: ${state.removedItems.join(', ')}`
+    if (state.placedItems.length > 0) {
+      removedText.textContent = `배치됨 ${state.placedItems.length}개`
       removedNotice.classList.add('visible')
     } else {
       removedNotice.classList.remove('visible')
@@ -994,7 +996,7 @@
     state.excluded.clear()
     state.grid = null
     state.phase = 'config'
-    state.removedItems = []
+    state.placedItems = []
     rangeEndManual = false
     rangeStartInput.value = 1
     cdOverlay.classList.remove('active')
@@ -1003,11 +1005,11 @@
     renderGrid(false)
   })
 
-  // ── Clear removed ──
+  // ── Clear placed ──
   btnClearRemoved.addEventListener('click', () => {
     saveHistory()
-    state.listItems = state.listItems.filter(x => !state.removedItems.includes(x))
-    state.removedItems = []
+    state.listItems = state.listItems.filter(x => !state.placedItems.includes(x))
+    state.placedItems = []
     removedNotice.classList.remove('visible')
     renderChips()
     updateAutoNumCount()
