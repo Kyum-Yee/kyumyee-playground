@@ -229,13 +229,32 @@
       transition: border-color 0.1s, color 0.1s;
     }
     .btn-auto-num:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-auto-num .auto-num-count {
-      float: right;
+
+    .auto-num-range {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.25rem;
+      font-size: 0.65rem;
       color: var(--text-dim);
-      font-size: 0.62rem;
-      transition: color 0.1s;
+      padding-left: 0.1rem;
     }
-    .btn-auto-num:hover .auto-num-count { color: var(--accent-dim); }
+    .range-input {
+      width: 40px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border-hi);
+      color: var(--text-bright);
+      font-family: inherit;
+      font-size: 0.72rem;
+      text-align: center;
+      padding: 0.1rem 0.1rem;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .range-input::-webkit-inner-spin-button,
+    .range-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .range-input:focus { border-bottom-color: var(--accent); color: var(--accent); }
 
     .list-hint {
       font-size: 0.62rem;
@@ -545,10 +564,13 @@
           <input class="chip-text-input" id="chip-input" type="text" placeholder="이름, 콤마로 구분…">
           <button class="btn-add-chip" id="btn-add-chip" title="추가">+</button>
         </div>
-        <button class="btn-auto-num" id="btn-auto-num">
-          번호 자동 추가
-          <span class="auto-num-count" id="auto-num-count">1 ~ 20</span>
-        </button>
+        <button class="btn-auto-num" id="btn-auto-num">번호 자동 추가</button>
+        <div class="auto-num-range">
+          <span>범위</span>
+          <input class="range-input" id="range-start" type="number" value="1" min="1">
+          <span>~</span>
+          <input class="range-input" id="range-end" type="number" value="20" min="1">
+        </div>
         <div class="list-hint">콤마 또는 스페이스로 여러 개 한번에 입력</div>
         <div class="removed-notice" id="removed-notice">
           <span id="removed-text"></span>
@@ -617,6 +639,9 @@
     removedItems: [],
   }
 
+  // ── Range state ──
+  let rangeEndManual = false  // true once user edits range-end manually
+
   // ── List History ──
   let listHistory = [[]]   // snapshots of listItems
   let historyIdx = 0
@@ -661,7 +686,8 @@
   const chipInput       = document.getElementById('chip-input')
   const btnAddChip      = document.getElementById('btn-add-chip')
   const btnAutoNum      = document.getElementById('btn-auto-num')
-  const autoNumCount    = document.getElementById('auto-num-count')
+  const rangeStartInput = document.getElementById('range-start')
+  const rangeEndInput   = document.getElementById('range-end')
   const btnUndo         = document.getElementById('btn-undo')
   const btnRedo         = document.getElementById('btn-redo')
   const optDuplicate    = document.getElementById('opt-duplicate')
@@ -688,8 +714,10 @@
   }
 
   function updateAutoNumCount() {
-    const n = availableCount()
-    autoNumCount.textContent = n > 0 ? `1 ~ ${n}` : '–'
+    if (!rangeEndManual) {
+      const n = availableCount()
+      rangeEndInput.value = n > 0 ? n : 1
+    }
   }
 
   // ── Build pool ──
@@ -874,12 +902,26 @@
     updateAutoNumCount()
   }
 
+  // ── Range inputs ──
+  rangeStartInput.addEventListener('change', () => {
+    let v = parseInt(rangeStartInput.value) || 1
+    if (v < 1) v = 1
+    rangeStartInput.value = v
+  })
+  rangeEndInput.addEventListener('change', () => {
+    let v = parseInt(rangeEndInput.value) || 1
+    if (v < 1) v = 1
+    rangeEndInput.value = v
+    rangeEndManual = true
+  })
+
   // ── Auto-number ──
   btnAutoNum.addEventListener('click', () => {
-    const n = availableCount()
-    if (n <= 0) return
+    const start = parseInt(rangeStartInput.value) || 1
+    const end   = parseInt(rangeEndInput.value)   || availableCount()
+    if (end < start) return
     saveHistory()
-    for (let i = 1; i <= n; i++) {
+    for (let i = start; i <= end; i++) {
       const s = String(i)
       if (!state.listItems.includes(s)) state.listItems.push(s)
     }
@@ -953,6 +995,8 @@
     state.grid = null
     state.phase = 'config'
     state.removedItems = []
+    rangeEndManual = false
+    rangeStartInput.value = 1
     cdOverlay.classList.remove('active')
     removedNotice.classList.remove('visible')
     updateAutoNumCount()
