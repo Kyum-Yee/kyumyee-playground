@@ -34,7 +34,6 @@
       font-size: 15px;
     }
 
-    /* grain overlay */
     body::after {
       content: '';
       position: fixed;
@@ -45,7 +44,6 @@
       opacity: 0.028;
     }
 
-    /* ── Layout ── */
     .app {
       display: flex;
       height: 100vh;
@@ -65,7 +63,6 @@
       scrollbar-width: thin;
       scrollbar-color: var(--border-hi) transparent;
     }
-
     .sidebar::-webkit-scrollbar { width: 4px; }
     .sidebar::-webkit-scrollbar-thumb { background: var(--border-hi); }
     .sidebar::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
@@ -78,6 +75,12 @@
     }
 
     /* ── Section head ── */
+    .section-head-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
     .section-head {
       display: flex;
       align-items: center;
@@ -86,7 +89,7 @@
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--text-dim);
-      margin-bottom: 0.75rem;
+      flex: 1;
     }
     .section-head::after {
       content: '';
@@ -95,7 +98,7 @@
       background: var(--border);
     }
 
-    /* ── Grid size inputs ── */
+    /* ── Grid size ── */
     .grid-size {
       display: flex;
       align-items: center;
@@ -103,7 +106,6 @@
       font-size: 0.75rem;
       color: var(--text);
     }
-
     .size-input {
       width: 44px;
       background: transparent;
@@ -120,20 +122,35 @@
     .size-input::-webkit-inner-spin-button,
     .size-input::-webkit-outer-spin-button { -webkit-appearance: none; }
     .size-input:focus { border-bottom-color: var(--accent); color: var(--accent); }
+    .size-label { color: var(--text-dim); font-size: 0.7rem; }
 
-    .size-label {
+    /* ── History buttons ── */
+    .btn-history {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border: 1px solid var(--border);
+      background: transparent;
       color: var(--text-dim);
-      font-size: 0.7rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border-radius: 0;
+      transition: border-color 0.1s, color 0.1s;
+      flex-shrink: 0;
     }
+    .btn-history:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .btn-history:disabled { opacity: 0.25; cursor: default; }
 
-    /* ── List (chips) ── */
+    /* ── Chips ── */
     .chips-area {
       display: flex;
       flex-wrap: wrap;
       gap: 0.3rem 0.35rem;
       min-height: 28px;
     }
-
     .chip {
       display: inline-flex;
       align-items: center;
@@ -149,6 +166,8 @@
       user-select: none;
     }
     .chip:hover { border-color: var(--accent); color: var(--text-bright); }
+    .chip.num-chip { color: var(--text-dim); }
+    .chip.num-chip:hover { border-color: var(--border-hi); color: var(--text); }
     .chip .remove {
       cursor: pointer;
       color: var(--text-dim);
@@ -159,16 +178,7 @@
     }
     .chip .remove:hover { color: var(--accent); }
 
-    .chip.removed-item {
-      border-color: var(--amber-dim);
-      color: var(--amber);
-      opacity: 0.7;
-    }
-
-    /* chip input */
-    .chip-input-wrap {
-      position: relative;
-    }
+    /* chip input row */
     .chip-text-input {
       background: transparent;
       border: none;
@@ -178,7 +188,8 @@
       font-size: 0.75rem;
       padding: 0.15rem 0.2rem;
       outline: none;
-      width: 120px;
+      min-width: 0;
+      flex: 1;
     }
     .chip-text-input::placeholder { color: var(--text-dim); }
     .chip-text-input:focus { border-bottom-color: var(--accent); }
@@ -196,14 +207,40 @@
       font-size: 0.9rem;
       cursor: pointer;
       border-radius: 0;
+      flex-shrink: 0;
       transition: border-color 0.1s, color 0.1s;
     }
     .btn-add-chip:hover { border-color: var(--accent); color: var(--accent); }
 
-    .list-hint {
-      font-size: 0.65rem;
+    .btn-auto-num {
+      width: 100%;
+      margin-top: 0.4rem;
+      background: transparent;
+      border: 1px solid var(--border);
       color: var(--text-dim);
-      margin-top: 0.25rem;
+      font-family: inherit;
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.4rem 0.75rem;
+      cursor: pointer;
+      border-radius: 0;
+      text-align: left;
+      transition: border-color 0.1s, color 0.1s;
+    }
+    .btn-auto-num:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-auto-num .auto-num-count {
+      float: right;
+      color: var(--text-dim);
+      font-size: 0.62rem;
+      transition: color 0.1s;
+    }
+    .btn-auto-num:hover .auto-num-count { color: var(--accent-dim); }
+
+    .list-hint {
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      margin-top: 0.3rem;
     }
 
     /* removed notice */
@@ -214,6 +251,7 @@
       gap: 0.5rem;
       align-items: center;
       flex-wrap: wrap;
+      margin-top: 0.4rem;
     }
     .removed-notice.visible { display: flex; }
     .btn-remove-deleted {
@@ -228,37 +266,6 @@
       transition: background 0.1s;
     }
     .btn-remove-deleted:hover { background: var(--amber-dim); }
-
-    /* ── Range ── */
-    .range-row {
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.72rem;
-      color: var(--text-dim);
-    }
-    .range-input {
-      width: 44px;
-      background: transparent;
-      border: none;
-      border-bottom: 1px solid var(--border-hi);
-      color: var(--text-bright);
-      font-family: inherit;
-      font-size: 0.8rem;
-      text-align: center;
-      padding: 0.15rem 0.1rem;
-      outline: none;
-      -moz-appearance: textfield;
-    }
-    .range-input::-webkit-inner-spin-button,
-    .range-input::-webkit-outer-spin-button { -webkit-appearance: none; }
-    .range-input:focus { border-bottom-color: var(--accent); color: var(--accent); }
-
-    .range-count {
-      font-size: 0.65rem;
-      color: var(--text-dim);
-      margin-left: 0.2rem;
-    }
 
     /* ── Options ── */
     .option-row {
@@ -288,13 +295,11 @@
     .option-row input[type="checkbox"]:checked::after {
       content: '✓';
       position: absolute;
-      top: -1px;
-      left: 1px;
+      top: -1px; left: 1px;
       font-size: 10px;
       color: var(--accent);
       line-height: 1.3;
     }
-
     .countdown-secs-input {
       width: 32px;
       background: transparent;
@@ -313,11 +318,7 @@
     .countdown-secs-input:focus { border-bottom-color: var(--accent); }
 
     /* ── Action buttons ── */
-    .btn-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
+    .btn-group { display: flex; flex-direction: column; gap: 0.4rem; }
 
     .btn-go {
       background: var(--accent);
@@ -350,7 +351,7 @@
     }
     .btn-reset:hover { border-color: var(--text-dim); color: var(--text); }
 
-    /* ── Main / Grid ── */
+    /* ── Main ── */
     .main {
       flex: 1;
       position: relative;
@@ -389,7 +390,7 @@
       justify-content: center;
       cursor: pointer;
       position: relative;
-      transition: background 0.12s, border-left-color 0.12s;
+      transition: background 0.12s;
       overflow: hidden;
       user-select: none;
     }
@@ -403,7 +404,7 @@
 
     .cell.excluded {
       background: var(--bg);
-      cursor: pointer;
+      border-left: 2px dashed var(--border-hi);
     }
     .cell.excluded .cell-index { display: none; }
     .cell.excluded::after {
@@ -412,12 +413,12 @@
       font-size: 1rem;
       font-weight: 300;
     }
-    .cell.excluded { border-left: 2px dashed var(--border-hi); }
 
     .cell.placed {
       background: var(--surface-2);
       border-left: 2px solid var(--accent);
       cursor: default;
+      animation: fadeUp 0.3s cubic-bezier(0.16,1,0.3,1) both;
     }
     .cell.placed:hover { background: var(--surface-2); }
     .cell.placed .cell-index { display: none; }
@@ -437,7 +438,6 @@
     }
     .cell.placed .cell-text { display: block; }
 
-    /* empty state */
     .empty-state {
       font-size: 0.72rem;
       color: var(--text-dim);
@@ -457,12 +457,11 @@
       position: absolute;
       inset: 0;
       background: rgba(7, 9, 12, 0.92);
-      display: flex;
+      display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 100;
-      display: none;
     }
     .countdown-overlay.active { display: flex; }
 
@@ -491,23 +490,9 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
-    .cell.placed { animation: fadeUp 0.3s cubic-bezier(0.16,1,0.3,1) both; }
-
-    /* stagger on cells */
-    .cell.placed:nth-child(1)  { animation-delay: 0ms; }
-    .cell.placed:nth-child(2)  { animation-delay: 30ms; }
-    .cell.placed:nth-child(3)  { animation-delay: 60ms; }
-    .cell.placed:nth-child(4)  { animation-delay: 90ms; }
-    .cell.placed:nth-child(5)  { animation-delay: 120ms; }
-    .cell.placed:nth-child(6)  { animation-delay: 150ms; }
-    .cell.placed:nth-child(7)  { animation-delay: 180ms; }
-    .cell.placed:nth-child(8)  { animation-delay: 210ms; }
-
-    /* ── Footer ── */
     .footer {
       position: absolute;
-      bottom: 0;
-      right: 0;
+      bottom: 0; right: 0;
       padding: 0.4rem 0.75rem;
       font-size: 9px;
       color: var(--text-dim);
@@ -515,12 +500,10 @@
       text-transform: uppercase;
     }
 
-    /* ── Mobile ── */
     @media (max-width: 640px) {
       .app { flex-direction: column; }
       .sidebar {
-        width: 100%;
-        min-width: 0;
+        width: 100%; min-width: 0;
         border-right: none;
         border-bottom: 1px solid var(--border);
         max-height: 55vh;
@@ -532,13 +515,14 @@
 </head>
 <body>
 <div class="app">
-  <!-- ── Sidebar ── -->
   <aside class="sidebar">
     <div class="sidebar-inner">
 
       <!-- [01] GRID SIZE -->
       <section>
-        <div class="section-head">[01] Grid Size</div>
+        <div class="section-head-row">
+          <div class="section-head">[01] Grid Size</div>
+        </div>
         <div class="grid-size">
           <span class="size-label">행</span>
           <input class="size-input" type="number" id="rows" value="4" min="1" max="30">
@@ -551,12 +535,20 @@
 
       <!-- [02] LIST -->
       <section>
-        <div class="section-head">[02] List</div>
+        <div class="section-head-row">
+          <div class="section-head">[02] List</div>
+          <button class="btn-history" id="btn-undo" title="뒤로 (Ctrl+Z)" disabled>←</button>
+          <button class="btn-history" id="btn-redo" title="앞으로 (Ctrl+Y)" disabled>→</button>
+        </div>
         <div class="chips-area" id="chips-area"></div>
         <div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;">
           <input class="chip-text-input" id="chip-input" type="text" placeholder="이름, 콤마로 구분…">
           <button class="btn-add-chip" id="btn-add-chip" title="추가">+</button>
         </div>
+        <button class="btn-auto-num" id="btn-auto-num">
+          번호 자동 추가
+          <span class="auto-num-count" id="auto-num-count">1 ~ 20</span>
+        </button>
         <div class="list-hint">콤마 또는 스페이스로 여러 개 한번에 입력</div>
         <div class="removed-notice" id="removed-notice">
           <span id="removed-text"></span>
@@ -564,21 +556,11 @@
         </div>
       </section>
 
-      <!-- [03] AUTO NUMBERS -->
+      <!-- [03] OPTIONS -->
       <section>
-        <div class="section-head">[03] 번호 자동 추가</div>
-        <div class="range-row">
-          <span>범위</span>
-          <input class="range-input" type="number" id="range-start" value="1" min="0">
-          <span>~</span>
-          <input class="range-input" type="number" id="range-end" value="20" min="0">
-          <span class="range-count" id="range-count">(20개)</span>
+        <div class="section-head-row">
+          <div class="section-head">[03] 옵션</div>
         </div>
-      </section>
-
-      <!-- [04] OPTIONS -->
-      <section>
-        <div class="section-head">[04] 옵션</div>
         <div style="display:flex;flex-direction:column;gap:0.5rem;">
           <label class="option-row">
             <input type="checkbox" id="opt-duplicate">
@@ -602,7 +584,6 @@
     </div>
   </aside>
 
-  <!-- ── Main ── -->
   <main class="main" id="main">
     <div class="grid-wrap" id="grid-wrap">
       <div class="empty-state" id="empty-state">
@@ -612,7 +593,6 @@
       <div class="grid-table" id="grid-table" style="display:none;"></div>
     </div>
 
-    <!-- Countdown Overlay -->
     <div class="countdown-overlay" id="countdown-overlay">
       <div class="countdown-num" id="countdown-num">3</div>
       <div class="countdown-label">자리 배치 중</div>
@@ -627,92 +607,94 @@
   const state = {
     rows: 4,
     cols: 5,
-    excluded: new Set(),      // "r,c"
-    listItems: [],            // user custom strings
-    rangeStart: 1,
-    rangeEnd: 20,
+    excluded: new Set(),
+    listItems: [],
     allowDuplicates: false,
     countdownEnabled: true,
     countdownSecs: 3,
-    phase: 'config',          // 'config' | 'countdown' | 'result'
-    grid: null,               // string[][]
+    phase: 'config',
+    grid: null,
     removedItems: [],
-    _rangeManual: false,      // user edited rangeEnd manually
+  }
+
+  // ── List History ──
+  let listHistory = [[]]   // snapshots of listItems
+  let historyIdx = 0
+
+  function saveHistory() {
+    listHistory.splice(historyIdx + 1)
+    listHistory.push([...state.listItems])
+    historyIdx = listHistory.length - 1
+    updateHistoryBtns()
+  }
+
+  function undo() {
+    if (historyIdx > 0) {
+      historyIdx--
+      state.listItems = [...listHistory[historyIdx]]
+      renderChips()
+      updateAutoNumCount()
+      updateHistoryBtns()
+    }
+  }
+
+  function redo() {
+    if (historyIdx < listHistory.length - 1) {
+      historyIdx++
+      state.listItems = [...listHistory[historyIdx]]
+      renderChips()
+      updateAutoNumCount()
+      updateHistoryBtns()
+    }
+  }
+
+  function updateHistoryBtns() {
+    btnUndo.disabled = historyIdx <= 0
+    btnRedo.disabled = historyIdx >= listHistory.length - 1
   }
 
   // ── DOM refs ──
-  const rowsInput      = document.getElementById('rows')
-  const colsInput      = document.getElementById('cols')
-  const totalLabel     = document.getElementById('total-label')
-  const chipsArea      = document.getElementById('chips-area')
-  const chipInput      = document.getElementById('chip-input')
-  const btnAddChip     = document.getElementById('btn-add-chip')
-  const rangeStart     = document.getElementById('range-start')
-  const rangeEnd       = document.getElementById('range-end')
-  const rangeCount     = document.getElementById('range-count')
-  const optDuplicate   = document.getElementById('opt-duplicate')
-  const optCountdown   = document.getElementById('opt-countdown')
-  const cdSecs         = document.getElementById('countdown-secs')
-  const btnGo          = document.getElementById('btn-go')
-  const btnReset       = document.getElementById('btn-reset')
-  const gridTable      = document.getElementById('grid-table')
-  const gridWrap       = document.getElementById('grid-wrap')
-  const emptyState     = document.getElementById('empty-state')
-  const cdOverlay      = document.getElementById('countdown-overlay')
-  const cdNum          = document.getElementById('countdown-num')
-  const removedNotice  = document.getElementById('removed-notice')
-  const removedText    = document.getElementById('removed-text')
+  const rowsInput       = document.getElementById('rows')
+  const colsInput       = document.getElementById('cols')
+  const totalLabel      = document.getElementById('total-label')
+  const chipsArea       = document.getElementById('chips-area')
+  const chipInput       = document.getElementById('chip-input')
+  const btnAddChip      = document.getElementById('btn-add-chip')
+  const btnAutoNum      = document.getElementById('btn-auto-num')
+  const autoNumCount    = document.getElementById('auto-num-count')
+  const btnUndo         = document.getElementById('btn-undo')
+  const btnRedo         = document.getElementById('btn-redo')
+  const optDuplicate    = document.getElementById('opt-duplicate')
+  const optCountdown    = document.getElementById('opt-countdown')
+  const cdSecs          = document.getElementById('countdown-secs')
+  const btnGo           = document.getElementById('btn-go')
+  const btnReset        = document.getElementById('btn-reset')
+  const gridTable       = document.getElementById('grid-table')
+  const gridWrap        = document.getElementById('grid-wrap')
+  const emptyState      = document.getElementById('empty-state')
+  const cdOverlay       = document.getElementById('countdown-overlay')
+  const cdNum           = document.getElementById('countdown-num')
+  const removedNotice   = document.getElementById('removed-notice')
+  const removedText     = document.getElementById('removed-text')
   const btnClearRemoved = document.getElementById('btn-clear-removed')
 
-  // ── Init ──
-  function init() {
-    state.rows = parseInt(rowsInput.value) || 4
-    state.cols = parseInt(colsInput.value) || 5
-    updateTotalLabel()
-    renderChips()
-    syncRangeDefaults()
-    renderGrid(false)
+  // ── Helpers ──
+  function availableCount() {
+    return state.rows * state.cols - state.excluded.size
   }
 
   function updateTotalLabel() {
     totalLabel.textContent = `= ${state.rows * state.cols}`
   }
 
-  // ── Available cell count ──
-  function availableCount() {
-    return state.rows * state.cols - state.excluded.size
-  }
-
-  // ── Auto range sync ──
-  function syncRangeDefaults() {
-    const avail = availableCount()
-    const listCount = state.listItems.length
-    const autoCount = Math.max(0, avail - listCount)
-    const newEnd = state.rangeStart + autoCount - 1
-
-    if (!state._rangeManual) {
-      state.rangeEnd = Math.max(state.rangeStart - 1, newEnd)
-      rangeEnd.value = state.rangeEnd
-    }
-
-    updateRangeCount()
-  }
-
-  function updateRangeCount() {
-    const s = parseInt(rangeStart.value) || 1
-    const e = parseInt(rangeEnd.value) || 0
-    const cnt = e >= s ? e - s + 1 : 0
-    rangeCount.textContent = `(${cnt}개)`
+  function updateAutoNumCount() {
+    const n = availableCount()
+    autoNumCount.textContent = n > 0 ? `1 ~ ${n}` : '–'
   }
 
   // ── Build pool ──
   function buildPool() {
-    const s = state.rangeStart
-    const e = state.rangeEnd
-    const nums = []
-    for (let i = s; i <= e; i++) nums.push(String(i))
-    const pool = [...state.listItems, ...nums]
-    return pool
+    return [...state.listItems]
   }
 
   function shuffle(arr) {
@@ -731,13 +713,11 @@
 
     if (!state.allowDuplicates) {
       if (pool.length > avail) {
-        // shuffle and crop
         shuffle(pool)
         state.removedItems = pool.slice(avail)
         pool = pool.slice(0, avail)
       }
     } else {
-      // fill with repeats if needed
       while (pool.length < avail) {
         const base = buildPool()
         if (base.length === 0) break
@@ -748,7 +728,6 @@
 
     shuffle(pool)
 
-    // build grid
     state.grid = Array.from({ length: state.rows }, () => Array(state.cols).fill(null))
     let idx = 0
     for (let r = 0; r < state.rows; r++) {
@@ -763,7 +742,6 @@
     state.phase = 'result'
     renderGrid(true)
 
-    // show removed notice
     if (state.removedItems.length > 0) {
       removedText.textContent = `미배치: ${state.removedItems.join(', ')}`
       removedNotice.classList.add('visible')
@@ -778,17 +756,15 @@
     let secs = parseInt(cdSecs.value) || 3
     cdNum.textContent = secs
     cdNum.style.animation = 'none'
-    requestAnimationFrame(() => {
-      cdNum.style.animation = ''
-    })
+    requestAnimationFrame(() => { cdNum.style.animation = '' })
     cdOverlay.classList.add('active')
 
     const tick = setInterval(() => {
       secs--
       if (secs <= 0) {
         clearInterval(tick)
-        cdNum.textContent = '!'
         cdNum.style.animation = 'none'
+        cdNum.textContent = '!'
         requestAnimationFrame(() => { cdNum.style.animation = '' })
         setTimeout(() => {
           cdOverlay.classList.remove('active')
@@ -802,14 +778,11 @@
     }, 1000)
   }
 
-  // ── Render Grid ──
+  // ── Grid ──
   function calcCellSize() {
-    const wrap = gridWrap
-    const W = wrap.clientWidth - 32
-    const H = wrap.clientHeight - 32
-    const byW = Math.floor(W / state.cols)
-    const byH = Math.floor(H / state.rows)
-    return Math.max(36, Math.min(byW, byH, 120))
+    const W = gridWrap.clientWidth - 32
+    const H = gridWrap.clientHeight - 32
+    return Math.max(36, Math.min(Math.floor(W / state.cols), Math.floor(H / state.rows), 120))
   }
 
   function renderGrid(placed) {
@@ -817,7 +790,6 @@
     gridTable.style.display = 'grid'
     gridTable.style.gridTemplateColumns = `repeat(${state.cols}, var(--cell-size, 72px))`
     emptyState.style.display = 'none'
-    gridTable.style.display = 'grid'
 
     const cellSize = calcCellSize()
     gridTable.style.setProperty('--cell-size', `${cellSize}px`)
@@ -830,18 +802,15 @@
         cell.dataset.c = c
 
         const key = `${r},${c}`
-        const isExcluded = state.excluded.has(key)
-
-        if (isExcluded) {
+        if (state.excluded.has(key)) {
           cell.classList.add('excluded')
         } else if (placed && state.grid && state.grid[r][c] !== null) {
           cell.classList.add('placed')
           const txt = document.createElement('div')
           txt.className = 'cell-text'
           txt.textContent = state.grid[r][c]
-          // dynamic font size
           const len = String(state.grid[r][c]).length
-          if (len > 5) txt.style.fontSize = `${Math.max(0.55, 0.75 - (len - 5) * 0.05)}rem`
+          if (len > 5) txt.style.fontSize = `${Math.max(0.52, 0.75 - (len - 5) * 0.05)}rem`
           cell.appendChild(txt)
         } else {
           const idx = document.createElement('div')
@@ -859,48 +828,66 @@
   function onCellClick(r, c) {
     if (state.phase === 'countdown') return
     const key = `${r},${c}`
-    if (state.excluded.has(key)) {
-      state.excluded.delete(key)
-    } else {
-      state.excluded.add(key)
-    }
-    syncRangeDefaults()
+    if (state.excluded.has(key)) state.excluded.delete(key)
+    else state.excluded.add(key)
+    updateAutoNumCount()
     renderGrid(state.phase === 'result')
   }
 
   // ── Chips ──
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  }
+
+  // heuristic: "1", "2", "10" etc — pure integer strings are auto-numbers
+  function isAutoNum(s) {
+    return /^\d+$/.test(s)
+  }
+
   function renderChips() {
     chipsArea.innerHTML = ''
     state.listItems.forEach((item, i) => {
       const chip = document.createElement('span')
-      chip.className = 'chip'
+      chip.className = 'chip' + (isAutoNum(item) ? ' num-chip' : '')
       chip.innerHTML = `${escHtml(item)} <span class="remove" data-i="${i}">×</span>`
       chipsArea.appendChild(chip)
     })
     chipsArea.querySelectorAll('.remove').forEach(btn => {
       btn.addEventListener('click', e => {
         const idx = parseInt(e.target.dataset.i)
+        saveHistory()
         state.listItems.splice(idx, 1)
-        syncRangeDefaults()
         renderChips()
+        updateAutoNumCount()
       })
     })
   }
 
-  function escHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-  }
-
   function parseAndAddChips(raw) {
-    // split by comma or space sequences
     const parts = raw.split(/[,\s]+/).map(s => s.trim()).filter(Boolean)
+    let changed = false
     parts.forEach(p => {
-      if (!state.listItems.includes(p)) state.listItems.push(p)
+      if (!state.listItems.includes(p)) { state.listItems.push(p); changed = true }
     })
-    syncRangeDefaults()
+    if (changed) saveHistory()
     renderChips()
+    updateAutoNumCount()
   }
 
+  // ── Auto-number ──
+  btnAutoNum.addEventListener('click', () => {
+    const n = availableCount()
+    if (n <= 0) return
+    saveHistory()
+    for (let i = 1; i <= n; i++) {
+      const s = String(i)
+      if (!state.listItems.includes(s)) state.listItems.push(s)
+    }
+    renderChips()
+    updateAutoNumCount()
+  })
+
+  // ── Chip input ──
   btnAddChip.addEventListener('click', () => {
     const v = chipInput.value.trim()
     if (v) { parseAndAddChips(v); chipInput.value = '' }
@@ -914,14 +901,17 @@
     }
   })
 
-  // ── Grid size inputs ──
+  // ── History buttons ──
+  btnUndo.addEventListener('click', undo)
+  btnRedo.addEventListener('click', redo)
+
+  // ── Grid size ──
   rowsInput.addEventListener('change', () => {
     state.rows = Math.max(1, Math.min(30, parseInt(rowsInput.value) || 1))
     rowsInput.value = state.rows
     state.excluded.clear()
-    state._rangeManual = false
     updateTotalLabel()
-    syncRangeDefaults()
+    updateAutoNumCount()
     if (state.phase === 'result') state.phase = 'config'
     renderGrid(false)
   })
@@ -930,45 +920,18 @@
     state.cols = Math.max(1, Math.min(30, parseInt(colsInput.value) || 1))
     colsInput.value = state.cols
     state.excluded.clear()
-    state._rangeManual = false
     updateTotalLabel()
-    syncRangeDefaults()
+    updateAutoNumCount()
     if (state.phase === 'result') state.phase = 'config'
     renderGrid(false)
   })
 
-  // ── Range inputs ──
-  rangeStart.addEventListener('input', () => {
-    state.rangeStart = parseInt(rangeStart.value) || 1
-    state._rangeManual = true
-    updateRangeCount()
-  })
-
-  rangeEnd.addEventListener('input', () => {
-    state.rangeEnd = parseInt(rangeEnd.value) || 0
-    state._rangeManual = true
-    updateRangeCount()
-  })
-
-  rangeStart.addEventListener('blur', () => {
-    const s = parseInt(rangeStart.value) || 1
-    const e = parseInt(rangeEnd.value) || 0
-    if (s > e && e > 0) rangeEnd.value = s
-    state.rangeStart = s
-    state.rangeEnd = parseInt(rangeEnd.value) || s
-    updateRangeCount()
-  })
-
   // ── Options ──
-  optDuplicate.addEventListener('change', () => {
-    state.allowDuplicates = optDuplicate.checked
-  })
-
+  optDuplicate.addEventListener('change', () => { state.allowDuplicates = optDuplicate.checked })
   optCountdown.addEventListener('change', () => {
     state.countdownEnabled = optCountdown.checked
     cdSecs.disabled = !state.countdownEnabled
   })
-
   cdSecs.addEventListener('change', () => {
     state.countdownSecs = Math.max(1, Math.min(9, parseInt(cdSecs.value) || 3))
     cdSecs.value = state.countdownSecs
@@ -979,15 +942,9 @@
     if (state.phase === 'countdown') return
     state.rows = parseInt(rowsInput.value) || 4
     state.cols = parseInt(colsInput.value) || 5
-    state.rangeStart = parseInt(rangeStart.value) || 1
-    state.rangeEnd = parseInt(rangeEnd.value) || 0
     renderGrid(false)
-
-    if (state.countdownEnabled) {
-      startCountdown()
-    } else {
-      doPlace()
-    }
+    if (state.countdownEnabled) startCountdown()
+    else doPlace()
   })
 
   // ── Reset ──
@@ -996,46 +953,47 @@
     state.grid = null
     state.phase = 'config'
     state.removedItems = []
-    state._rangeManual = false
     cdOverlay.classList.remove('active')
     removedNotice.classList.remove('visible')
-    syncRangeDefaults()
+    updateAutoNumCount()
     renderGrid(false)
   })
 
   // ── Clear removed ──
   btnClearRemoved.addEventListener('click', () => {
+    saveHistory()
     state.listItems = state.listItems.filter(x => !state.removedItems.includes(x))
     state.removedItems = []
     removedNotice.classList.remove('visible')
-    syncRangeDefaults()
     renderChips()
+    updateAutoNumCount()
   })
 
-  // ── Resize observer ──
-  const ro = new ResizeObserver(() => {
+  // ── Resize ──
+  new ResizeObserver(() => {
     if (gridTable.style.display !== 'none') {
-      const cellSize = calcCellSize()
-      gridTable.style.setProperty('--cell-size', `${cellSize}px`)
+      gridTable.style.setProperty('--cell-size', `${calcCellSize()}px`)
     }
-  })
-  ro.observe(gridWrap)
+  }).observe(gridWrap)
 
   // ── Keyboard ──
   document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo() }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo() }
     if (e.key === 'Enter' && document.activeElement !== chipInput) {
       if (state.phase !== 'countdown') btnGo.click()
     }
-    if (e.key === 'Escape') {
-      if (state.phase === 'countdown') {
-        cdOverlay.classList.remove('active')
-        state.phase = 'config'
-      }
+    if (e.key === 'Escape' && state.phase === 'countdown') {
+      cdOverlay.classList.remove('active')
+      state.phase = 'config'
     }
   })
 
   // ── Boot ──
-  init()
+  updateTotalLabel()
+  updateAutoNumCount()
+  updateHistoryBtns()
+  renderChips()
   renderGrid(false)
 </script>
 </body>
