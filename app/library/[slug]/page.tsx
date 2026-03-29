@@ -14,7 +14,8 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>
 }) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
+  const slug = decodeURIComponent(rawSlug)
   const subject = getSubject(slug)
   if (!subject) return { title: 'Not Found' }
   return {
@@ -30,8 +31,9 @@ export default async function SubjectPage({
   params: Promise<{ slug: string }>
   searchParams: Promise<{ stage?: string }>
 }) {
-  const { slug } = await params
+  const { slug: rawSlug } = await params
   const { stage: stageParam } = await searchParams
+  const slug = decodeURIComponent(rawSlug)
 
   const subject = getSubject(slug)
   if (!subject) notFound()
