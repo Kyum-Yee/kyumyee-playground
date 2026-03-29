@@ -1,4 +1,4 @@
-import { SUBJECTS } from '@/lib/expert-library'
+import { SUBJECTS, fetchAllStage1Contents } from '@/lib/expert-library'
 import SubjectGrid from '@/components/SubjectGrid'
 
 export const metadata = {
@@ -12,6 +12,7 @@ export default async function LibraryPage({
   searchParams: Promise<{ q?: string; cat?: string }>
 }) {
   const { q = '', cat = '전체' } = await searchParams
+  const contentMap = await fetchAllStage1Contents()
 
   return (
     <main style={{ paddingTop: '3rem', paddingBottom: '4rem' }}>
@@ -46,7 +47,7 @@ export default async function LibraryPage({
         </p>
       </div>
 
-      <SubjectGrid subjects={SUBJECTS} initialQ={q} initialCat={cat} />
+      <SubjectGrid subjects={SUBJECTS} initialQ={q} initialCat={cat} contentMap={contentMap} />
     </main>
   )
 }

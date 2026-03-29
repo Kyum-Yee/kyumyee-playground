@@ -124,3 +124,19 @@ export async function fetchStageMarkdown(
     return null
   }
 }
+
+export async function fetchAllStage1Contents(): Promise<Record<string, string>> {
+  const results = await Promise.allSettled(
+    SUBJECTS.map(async subject => {
+      const content = await fetchStageMarkdown(subject, 1)
+      return { slug: subject.slug, content: content ?? '' }
+    }),
+  )
+  const map: Record<string, string> = {}
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value.content) {
+      map[r.value.slug] = r.value.content
+    }
+  }
+  return map
+}

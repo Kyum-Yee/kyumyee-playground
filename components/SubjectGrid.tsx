@@ -10,9 +10,10 @@ interface Props {
   subjects: Subject[]
   initialQ: string
   initialCat: string
+  contentMap: Record<string, string>
 }
 
-export default function SubjectGrid({ subjects, initialQ, initialCat }: Props) {
+export default function SubjectGrid({ subjects, initialQ, initialCat, contentMap }: Props) {
   const [q, setQ] = useState(initialQ)
   const [cat, setCat] = useState<Cat>(
     (['전체', '이과', '문과'].includes(initialCat) ? initialCat : '전체') as Cat,
@@ -26,10 +27,11 @@ export default function SubjectGrid({ subjects, initialQ, initialCat }: Props) {
       return (
         s.title.toLowerCase().includes(lower) ||
         (s.subtitle?.toLowerCase().includes(lower) ?? false) ||
-        s.category.includes(lower)
+        s.category.includes(lower) ||
+        (contentMap[s.slug]?.toLowerCase().includes(lower) ?? false)
       )
     })
-  }, [subjects, q, cat])
+  }, [subjects, q, cat, contentMap])
 
   const tabs: Cat[] = ['전체', '이과', '문과']
 
@@ -77,7 +79,7 @@ export default function SubjectGrid({ subjects, initialQ, initialCat }: Props) {
           type="text"
           value={q}
           onChange={e => setQ(e.target.value)}
-          placeholder="검색 — 제목, 영문명, 분야..."
+          placeholder="검색 — 제목, 영문명, 분야, 내용..."
           style={{
             width: '100%',
             boxSizing: 'border-box',
