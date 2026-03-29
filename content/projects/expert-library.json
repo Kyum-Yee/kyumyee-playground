@@ -1,0 +1,9 @@
+{
+  "title": "Expert Curriculum Library",
+  "type": "non-ai",
+  "categories": ["교육", "콘텐츠"],
+  "tags": ["커리큘럼", "이과", "문과", "학습"],
+  "description": "이과 25개·문과 42개 전문 분야 커리큘럼을 단계별로 열람하는 교육 뷰어. 각 분야당 5단계 마크다운 강의 자료를 제공한다.",
+  "demo": "https://kyumyee-playground.vercel.app/library",
+  "github": "https://github.com/Kyum-Yee/expert-curriculum-library"
+}
