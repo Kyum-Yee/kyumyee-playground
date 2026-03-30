@@ -303,3 +303,20 @@ body::after {
 .prose-wrap .prose ul > li::before { content: '→'; position: absolute; left: 0; color: var(--accent); font-family: var(--font-mono); font-size: 0.8em; top: 0.2em; }
 .prose-wrap .prose ol { padding-left: 1.5rem; color: #3d3d3d; }
 .prose-wrap .prose hr { border: none; border-top: 1px solid #d0cdc8; margin: 2rem 0; }
+
+/* ── KaTeX math rendering ────────────────────────────────────────────────────── */
+.prose-wrap .prose .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  background: #eeece8;
+  border-left: 2px solid var(--accent);
+}
+.prose-wrap .prose .katex { font-size: 1.05em; }
+.prose .katex-display {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  padding: 0.75rem 0;
+}
+.prose .katex { font-size: 1.05em; }

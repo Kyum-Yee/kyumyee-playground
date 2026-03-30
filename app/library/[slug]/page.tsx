@@ -129,7 +129,9 @@ export default async function SubjectPage({
       {/* Content */}
       <div style={{ marginTop: '2rem' }}>
         {html ? (
-          <div className="prose-wrap" dangerouslySetInnerHTML={{ __html: html }} />
+          <div className="prose-wrap">
+            <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
         ) : (
           <div
             style={{
