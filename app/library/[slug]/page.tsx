@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { marked } from 'marked'
-import DOMPurify from 'isomorphic-dompurify'
 import { SUBJECTS, getSubject, fetchStageMarkdown } from '@/lib/expert-library'
 import StageNav from './StageNav'
 
@@ -42,17 +41,7 @@ export default async function SubjectPage({
 
   const markdown = await fetchStageMarkdown(subject, stage)
 
-  const html = markdown
-    ? DOMPurify.sanitize(marked(markdown) as string, {
-        ALLOWED_TAGS: [
-          'h1','h2','h3','h4','h5','h6',
-          'p','ul','ol','li','strong','em','code','pre',
-          'blockquote','a','table','tr','td','th','thead','tbody',
-          'hr','br','span',
-        ],
-        ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'id'],
-      })
-    : null
+  const html = markdown ? (marked(markdown) as string) : null
 
   const prevStage = stage > 1 ? stage - 1 : null
   const nextStage = stage < subject.stages ? stage + 1 : null
