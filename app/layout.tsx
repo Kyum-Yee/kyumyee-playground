@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { JetBrains_Mono, Newsreader } from 'next/font/google'
 import Link from 'next/link'
 import './globals.css'
+import 'katex/dist/katex.min.css'
 
 const jbMono = JetBrains_Mono({
   variable: '--font-jb-mono',

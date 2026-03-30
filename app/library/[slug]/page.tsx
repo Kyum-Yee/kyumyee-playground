@@ -1,8 +1,11 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { marked } from 'marked'
+import markedKatex from 'marked-katex-extension'
 import { SUBJECTS, getSubject, fetchStageMarkdown } from '@/lib/expert-library'
 import StageNav from './StageNav'
+
+marked.use(markedKatex({ throwOnError: false, output: 'html' }))
 
 export async function generateStaticParams() {
   return SUBJECTS.map(s => ({ slug: s.slug }))
