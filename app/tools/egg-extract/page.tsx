@@ -21,13 +21,14 @@ interface ApiResult {
   totalFiles: number
   totalDirs: number
   totalSize: number
+  volumeCount?: number
 }
 
 type State =
   | { phase: 'idle' }
   | { phase: 'dragging' }
-  | { phase: 'loading'; name: string; size: number }
-  | { phase: 'done'; result: ApiResult; name: string }
+  | { phase: 'loading'; names: string[]; totalSize: number }
+  | { phase: 'done'; result: ApiResult; names: string[] }
   | { phase: 'error'; message: string }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -257,7 +258,10 @@ const scanLines = [
   'building file tree…',
 ]
 
-function ScanLog({ name, size }: { name: string; size: number }) {
+function ScanLog({ names, totalSize }: { names: string[]; totalSize: number }) {
+  const label = names.length === 1
+    ? names[0]
+    : `${names[0]} (+${names.length - 1} vol${names.length > 2 ? 's' : ''})`
   return (
     <div style={{
       background: 'var(--surface)',
@@ -269,7 +273,7 @@ function ScanLog({ name, size }: { name: string; size: number }) {
       lineHeight: 2,
     }}>
       <div style={{ color: 'var(--text-dim)', marginBottom: '0.5rem' }}>
-        <span style={{ color: 'var(--accent)' }}>$</span> egg-extract {name} <span style={{ opacity: 0.5 }}>({fmtBytes(size)})</span>
+        <span style={{ color: 'var(--accent)' }}>$</span> egg-extract {label} <span style={{ opacity: 0.5 }}>({fmtBytes(totalSize)})</span>
       </div>
       {scanLines.map((line, i) => (
         <div
@@ -302,17 +306,19 @@ export default function EggExtractPage() {
   const [state, setState] = useState<State>({ phase: 'idle' })
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const process = useCallback(async (file: File) => {
-    setState({ phase: 'loading', name: file.name, size: file.size })
+  const process = useCallback(async (files: File[]) => {
+    const names = files.map(f => f.name)
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0)
+    setState({ phase: 'loading', names, totalSize })
 
     const form = new FormData()
-    form.append('file', file)
+    files.forEach(f => form.append('files', f))
 
     try {
       const res = await fetch('/api/egg-extract', { method: 'POST', body: form })
       const json = await res.json()
       if (!json.success) throw new Error(json.error ?? 'Unknown error')
-      setState({ phase: 'done', result: json as ApiResult, name: file.name })
+      setState({ phase: 'done', result: json as ApiResult, names })
     } catch (err) {
       setState({ phase: 'error', message: err instanceof Error ? err.message : String(err) })
     }
@@ -320,14 +326,14 @@ export default function EggExtractPage() {
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
-    const file = e.dataTransfer.files[0]
-    if (file) process(file)
+    const files = Array.from(e.dataTransfer.files).filter(f => /\.egg$/i.test(f.name))
+    if (files.length) process(files)
     else setState({ phase: 'idle' })
   }, [process])
 
   const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) process(file)
+    const files = Array.from(e.target.files ?? [])
+    if (files.length) process(files)
   }, [process])
 
   const reset = () => {
@@ -368,7 +374,7 @@ export default function EggExtractPage() {
         }}>
           한국산 압축 포맷 <span style={{ color: 'var(--text)' }}>.egg</span> 아카이브를 브라우저에서 직접 열람 · 추출.
           {' '}<span style={{ color: 'var(--text)' }}>store</span> / <span style={{ color: 'var(--accent)' }}>deflate</span>{' '}
-          지원 · 최대 300 MB · 파일 데이터는 서버에 저장되지 않음.
+          지원 · 분할 압축 (.vol1.egg, .vol2.egg …) 동시 업로드 가능 · 최대 300 MB · 파일 데이터는 서버에 저장되지 않음.
         </p>
       </div>
 
@@ -433,7 +439,7 @@ export default function EggExtractPage() {
             textTransform: 'uppercase',
             transition: 'color 0.15s',
           }}>
-            {state.phase === 'dragging' ? 'drop to extract' : 'drop .egg file or click to browse'}
+            {state.phase === 'dragging' ? 'drop to extract' : 'drop .egg file(s) or click to browse'}
           </div>
 
           <div style={{
@@ -449,13 +455,14 @@ export default function EggExtractPage() {
         ref={inputRef}
         type="file"
         accept=".egg"
+        multiple
         onChange={onFileChange}
         style={{ display: 'none' }}
       />
 
       {/* Loading */}
       {state.phase === 'loading' && (
-        <ScanLog name={state.name} size={state.size} />
+        <ScanLog names={state.names} totalSize={state.totalSize} />
       )}
 
       {/* Error */}
@@ -499,11 +506,22 @@ export default function EggExtractPage() {
 
       {/* Results */}
       {state.phase === 'done' && (() => {
-        const { result, name } = state
+        const { result, names } = state
         const tree = buildTree(result.files)
         const ratio = result.totalSize > 0
           ? ((1 - result.archiveSize / result.totalSize) * 100).toFixed(1)
           : '0.0'
+        const statsItems = [
+          { label: 'archive', value: fmtBytes(result.archiveSize) },
+          { label: 'extracted', value: fmtBytes(result.totalSize) },
+          { label: 'files', value: String(result.totalFiles) },
+          { label: 'dirs', value: String(result.totalDirs) },
+          { label: 'ratio', value: `${ratio}%` },
+          { label: 'solid', value: result.isSolid ? 'yes' : 'no' },
+          ...(result.volumeCount && result.volumeCount > 1
+            ? [{ label: 'volumes', value: String(result.volumeCount) }]
+            : []),
+        ]
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeUp 0.4s ease both' }}>
@@ -516,14 +534,7 @@ export default function EggExtractPage() {
               background: 'var(--border)',
               border: '1px solid var(--border)',
             }}>
-              {[
-                { label: 'archive', value: fmtBytes(result.archiveSize) },
-                { label: 'extracted', value: fmtBytes(result.totalSize) },
-                { label: 'files', value: String(result.totalFiles) },
-                { label: 'dirs', value: String(result.totalDirs) },
-                { label: 'ratio', value: `${ratio}%` },
-                { label: 'solid', value: result.isSolid ? 'yes' : 'no' },
-              ].map(({ label, value }) => (
+              {statsItems.map(({ label, value }) => (
                 <div key={label} style={{
                   background: 'var(--surface)',
                   padding: '0.75rem 1rem',
@@ -539,7 +550,7 @@ export default function EggExtractPage() {
 
             {/* File tree */}
             <div>
-              <div className="section-head">01/ FILE TREE — {name}</div>
+              <div className="section-head">01/ FILE TREE — {names.length > 1 ? `${names[0]} (+${names.length - 1})` : names[0]}</div>
 
               {/* Header row */}
               <div style={{
