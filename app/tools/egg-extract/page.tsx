@@ -315,7 +315,15 @@ export default function EggExtractPage() {
     files.forEach(f => form.append('files', f))
 
     try {
-      const res = await fetch('/api/egg-extract', { method: 'POST', body: form })
+      const res = await fetch('https://kyumyee-playground.onrender.com/egg-extract', { method: 'POST', body: form })
+      if (!res.ok && res.status === 413) {
+        throw new Error('파일이 너무 큽니다 (300 MB 초과).')
+      }
+      const contentType = res.headers.get('content-type') ?? ''
+      if (!contentType.includes('application/json')) {
+        const text = await res.text()
+        throw new Error(`서버 오류 (HTTP ${res.status}): ${text.slice(0, 200)}`)
+      }
       const json = await res.json()
       if (!json.success) throw new Error(json.error ?? 'Unknown error')
       setState({ phase: 'done', result: json as ApiResult, names })
