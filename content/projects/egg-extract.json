@@ -1,0 +1,9 @@
+{
+  "title": "egg_extract",
+  "type": "non-ai",
+  "categories": ["파일 도구"],
+  "tags": ["Python", "바이너리 파싱", "EGG", "압축", "TypeScript"],
+  "description": "한국산 압축 포맷 .egg 아카이브를 브라우저에서 직접 열람·추출하는 데모. egg_extract.py를 TypeScript로 포팅해 서버사이드에서 순수 바이너리 파싱·CRC32 검증·deflate 압축 해제를 처리한다.",
+  "summary": ".egg 아카이브 파서 & 브라우저 추출 데모 (TypeScript 포팅).",
+  "demo": "https://kyumyee-playground.vercel.app/tools/egg-extract"
+}
