@@ -368,7 +368,7 @@ export default function EggExtractPage() {
         }}>
           한국산 압축 포맷 <span style={{ color: 'var(--text)' }}>.egg</span> 아카이브를 브라우저에서 직접 열람 · 추출.
           {' '}<span style={{ color: 'var(--text)' }}>store</span> / <span style={{ color: 'var(--accent)' }}>deflate</span>{' '}
-          지원 · 최대 20 MB · 파일 데이터는 서버에 저장되지 않음.
+          지원 · 최대 300 MB · 파일 데이터는 서버에 저장되지 않음.
         </p>
       </div>
 
@@ -441,7 +441,7 @@ export default function EggExtractPage() {
             fontSize: '0.65rem',
             color: 'var(--text-dim)',
             opacity: 0.6,
-          }}>max 20 MB</div>
+          }}>max 300 MB</div>
         </div>
       )}
 

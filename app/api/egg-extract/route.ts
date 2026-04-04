@@ -329,9 +329,9 @@ export async function POST(req: Request) {
       return Response.json({ success: false, error: 'No file uploaded' }, { status: 400 })
     }
 
-    const MAX_SIZE = 20 * 1024 * 1024 // 20 MB
+    const MAX_SIZE = 300 * 1024 * 1024 // 300 MB
     if (file.size > MAX_SIZE) {
-      return Response.json({ success: false, error: `File too large (max 20 MB, got ${(file.size / 1024 / 1024).toFixed(1)} MB)` }, { status: 413 })
+      return Response.json({ success: false, error: `File too large (max 300 MB, got ${(file.size / 1024 / 1024).toFixed(1)} MB)` }, { status: 413 })
     }
 
     const arrayBuffer = await file.arrayBuffer()
