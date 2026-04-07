@@ -1,0 +1,9 @@
+{
+  "title": "problem_viewer",
+  "type": "non-ai",
+  "categories": ["학습 도구"],
+  "tags": ["수학", "국어", "타이머", "뷰어", "문제풀기", "통계"],
+  "description": "MD 형식 수학·국어 문제 파일을 업로드하면 문제별 타이머와 함께 풀 수 있는 브라우저 뷰어. 지문 있는 문제는 좌우 분할 레이아웃으로 표시. LaTeX 수식 렌더링, 선지 인용 볼드 하이라이트. 정오답 4분류 체점 및 시간 효율 통계 제공. 서버 없이 클라이언트 전용 처리.",
+  "summary": "수학·국어 문제 MD 파일 → 타이머 뷰어 & 정오답 통계",
+  "demo": "/playground/demo/problem-viewer/index.html"
+}

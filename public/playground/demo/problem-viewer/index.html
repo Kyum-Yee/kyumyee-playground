@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Problem Viewer</title>
+
+  <!-- KaTeX -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="window._katexReady=true"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #050709;
+      --surface:     #0c0f12;
+      --surface2:    #10141a;
+      --border:      #1a2028;
+      --border-hi:   rgba(196,148,60,0.25);
+      --text-dim:    #3a4452;
+      --text-mid:    #6b7a8d;
+      --text:        #c8c0b0;
+      --text-hi:     #e8e0d0;
+      --amber:       oklch(0.78 0.16 85);
+      --amber-dk:    oklch(0.55 0.13 85);
+      --amber-pale:  oklch(0.78 0.08 85 / 0.12);
+      --danger:      oklch(0.65 0.22 25);
+      --danger-pale: oklch(0.65 0.22 25 / 0.12);
+      --correct:     oklch(0.72 0.17 162);
+      --problem-fs:  1.05rem;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    /* ── noise overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+      opacity: 0.6;
+    }
+
+    /* ════════════════════════════════════════
+       SCREENS
+    ════════════════════════════════════════ */
+    .screen {
+      position: fixed; inset: 0; z-index: 1;
+      display: flex; flex-direction: column;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .screen.hidden {
+      opacity: 0; pointer-events: none; transform: translateY(8px);
+    }
+
+    /* ════════════════════════════════════════
+       UPLOAD SCREEN
+    ════════════════════════════════════════ */
+    #upload-screen {
+      align-items: center; justify-content: center; gap: 0;
+    }
+
+    .upload-label {
+      font-size: 0.6rem; letter-spacing: 0.2em; color: var(--text-dim);
+      text-transform: uppercase; margin-bottom: 2.5rem;
+    }
+
+    .drop-zone {
+      width: min(480px, 90vw);
+      border: 1px solid var(--border-hi);
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      background: var(--surface);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .drop-zone:hover, .drop-zone.dragging {
+      border-color: var(--amber);
+      background: var(--amber-pale);
+    }
+    .drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-title {
+      font-size: 0.75rem; color: var(--text-hi); letter-spacing: 0.05em; margin-bottom: 0.75rem;
+    }
+    .drop-sub {
+      font-size: 0.65rem; color: var(--text-dim);
+    }
+    .drop-icon {
+      font-size: 2rem; margin-bottom: 1rem; opacity: 0.4;
+    }
+
+    .upload-info {
+      margin-top: 1.5rem; font-size: 0.65rem; color: var(--text-mid); text-align: center;
+    }
+
+    /* ════════════════════════════════════════
+       PROBLEM SCREEN
+    ════════════════════════════════════════ */
+    #problem-screen { overflow: hidden; }
+
+    /* top bar */
+    .top-bar {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.6rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 0.62rem; color: var(--text-dim);
+    }
+    .top-bar .progress { color: var(--amber); font-size: 0.68rem; white-space: nowrap; }
+    .top-bar .ref-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .top-controls { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .ctrl-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-dim);
+      padding: 0.2rem 0.45rem; font-size: 0.58rem; cursor: pointer; font-family: inherit;
+      transition: border-color 0.1s, color 0.1s;
+    }
+    .ctrl-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+    /* content area */
+    .content-area {
+      flex: 1; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    /* timer */
+    .timer-row {
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0.8rem 1.2rem 0.5rem;
+      gap: 1rem;
+    }
+    .timer-display {
+      font-size: clamp(2.4rem, 6vw, 4rem);
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      color: var(--amber);
+      font-family: 'JetBrains Mono', monospace;
+      transition: color 0.3s;
+      min-width: 6ch; text-align: center;
+    }
+    .timer-display.danger { color: var(--danger); }
+    .timer-display.pulse { animation: timerPulse 0.8s ease-in-out infinite; }
+    @keyframes timerPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .timer-status {
+      font-size: 0.6rem; color: var(--text-dim); text-align: center;
+      min-height: 1.2em;
+    }
+
+    /* single-col problem layout */
+    .problem-body {
+      flex: 1; overflow-y: auto;
+      padding: 0.5rem 1.5rem 5rem;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .problem-body::-webkit-scrollbar { width: 4px; }
+    .problem-body::-webkit-scrollbar-track { background: transparent; }
+    .problem-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+    /* two-col passage layout */
+    .passage-layout {
+      flex: 1; overflow: hidden;
+      display: flex; min-height: 0;
+    }
+    .passage-col {
+      flex: 0 0 var(--split, 48%);
+      overflow-y: auto; padding: 0.8rem 1.2rem 5rem;
+      border-right: 1px solid var(--border-hi);
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .question-col {
+      flex: 1; overflow-y: auto;
+      padding: 0.8rem 1.2rem 5rem;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .passage-col::-webkit-scrollbar,
+    .question-col::-webkit-scrollbar { width: 4px; }
+    .passage-col::-webkit-scrollbar-thumb,
+    .question-col::-webkit-scrollbar-thumb { background: var(--border); }
+
+    /* split drag handle */
+    .split-handle {
+      flex-shrink: 0; width: 6px; cursor: col-resize;
+      background: transparent; position: relative;
+      transition: background 0.15s;
+    }
+    .split-handle::after {
+      content: ''; position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+      height: 40px; width: 1px;
+      background: var(--border-hi);
+      transition: background 0.15s;
+    }
+    .split-handle:hover, .split-handle.dragging { background: var(--amber-pale); }
+    .split-handle:hover::after, .split-handle.dragging::after { background: var(--amber); }
+
+    /* passage toggle (mobile) */
+    .passage-toggle-btn {
+      background: none; border: 1px solid var(--border-hi); color: var(--text-mid);
+      padding: 0.3rem 0.7rem; font-size: 0.62rem; cursor: pointer; font-family: inherit;
+      margin-bottom: 0.5rem; display: none;
+      transition: border-color 0.1s, color 0.1s;
+    }
+    .passage-toggle-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+    /* text content */
+    .problem-text {
+      font-family: 'Newsreader', serif;
+      font-size: var(--problem-fs);
+      line-height: 1.75;
+      color: var(--text-hi);
+      white-space: pre-wrap;
+      word-break: keep-all;
+    }
+    .problem-text strong {
+      color: var(--amber);
+      font-weight: 400;
+      background: var(--amber-pale);
+      padding: 0 0.1em;
+    }
+    .passage-label {
+      font-size: 0.58rem; letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--text-dim); margin-bottom: 0.6rem; display: block;
+    }
+    .col-divider {
+      border: none; border-top: 1px solid var(--border-hi);
+      margin: 1rem 0;
+    }
+
+    /* choices (①②③ lines) */
+    .choices {
+      margin-top: 0.8rem;
+    }
+    .choice-line {
+      font-family: 'Newsreader', serif;
+      font-size: calc(var(--problem-fs) * 0.95);
+      line-height: 1.65;
+      color: var(--text-hi);
+      display: block;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .choice-line:last-child { border-bottom: none; }
+    .choice-line strong {
+      color: var(--amber);
+      font-weight: 400;
+      background: var(--amber-pale);
+      padding: 0 0.1em;
+    }
+
+    /* bottom action bar */
+    .action-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+      padding: 0.7rem 1.2rem;
+      background: linear-gradient(to top, var(--bg) 60%, transparent);
+      display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem;
+    }
+    .next-btn {
+      background: none;
+      border: 1px solid var(--amber);
+      color: var(--amber);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      padding: 0.5rem 1.4rem;
+      cursor: pointer;
+      letter-spacing: 0.08em;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+      position: relative;
+    }
+    .next-btn:hover {
+      background: var(--amber);
+      color: var(--bg);
+    }
+    .next-btn.pulse-glow {
+      animation: btnGlow 1.2s ease-in-out infinite;
+    }
+    @keyframes btnGlow {
+      0%, 100% { box-shadow: 0 0 0 0 oklch(0.78 0.16 85 / 0); }
+      50% { box-shadow: 0 0 14px 3px oklch(0.78 0.16 85 / 0.4); }
+    }
+
+    /* ════════════════════════════════════════
+       GRADING PANEL (slides up from bottom)
+    ════════════════════════════════════════ */
+    #grading-panel {
+      position: fixed; inset: 0; z-index: 20;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+      overflow: hidden;
+    }
+    #grading-panel.open { transform: translateY(0); }
+
+    .grading-top {
+      flex-shrink: 0;
+      display: flex; align-items: center;
+      padding: 0.6rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      gap: 1rem;
+    }
+    .answer-badge {
+      font-size: 0.65rem; color: var(--amber); border: 1px solid var(--amber);
+      padding: 0.15rem 0.5rem; letter-spacing: 0.1em;
+    }
+    .answer-value {
+      font-size: 0.85rem; color: var(--text-hi); font-family: 'Newsreader', serif;
+    }
+
+    .solution-body {
+      flex: 1; overflow-y: auto; padding: 1rem 1.5rem 7rem;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .solution-body::-webkit-scrollbar { width: 4px; }
+    .solution-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .solution-section { margin-bottom: 1.2rem; }
+    .solution-label {
+      font-size: 0.58rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--text-dim); margin-bottom: 0.4rem; display: block;
+    }
+    .solution-text {
+      font-family: 'Newsreader', serif;
+      font-size: calc(var(--problem-fs) * 0.95);
+      line-height: 1.7; color: var(--text);
+      white-space: pre-wrap; word-break: keep-all;
+    }
+    .tip-text {
+      font-family: 'Newsreader', serif;
+      font-size: calc(var(--problem-fs) * 0.92);
+      line-height: 1.65; color: var(--text-mid);
+      white-space: pre-wrap; word-break: keep-all;
+      border-left: 2px solid var(--border-hi); padding-left: 0.8rem;
+    }
+
+    /* grading buttons */
+    .grading-btns {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 21;
+      display: flex; gap: 1px;
+      background: var(--border);
+      border-top: 1px solid var(--border-hi);
+    }
+    .grade-btn {
+      flex: 1; background: var(--surface); border: none;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem; color: var(--text-mid);
+      padding: 0.7rem 0.2rem;
+      cursor: pointer; line-height: 1.4;
+      letter-spacing: 0.03em;
+      transition: background 0.12s, color 0.12s;
+    }
+    .grade-btn:hover { background: var(--surface2); color: var(--text-hi); }
+    .grade-btn .key { font-size: 0.55rem; color: var(--text-dim); display: block; margin-bottom: 0.2rem; }
+    .grade-btn.grade-correct:hover { background: oklch(0.72 0.17 162 / 0.15); color: var(--correct); }
+    .grade-btn.grade-calc:hover   { background: var(--amber-pale); color: var(--amber); }
+    .grade-btn.grade-concept:hover{ background: oklch(0.65 0.15 240 / 0.15); color: oklch(0.75 0.12 230); }
+    .grade-btn.grade-error:hover  { background: var(--danger-pale); color: var(--danger); }
+
+    /* ════════════════════════════════════════
+       STATS SCREEN
+    ════════════════════════════════════════ */
+    #stats-screen { overflow-y: auto; }
+
+    .stats-header {
+      flex-shrink: 0;
+      padding: 1.5rem 1.5rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .stats-title {
+      font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--text-dim); margin-bottom: 0.3rem;
+    }
+    .stats-big {
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      color: var(--text-hi); font-weight: 300; letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .stats-big span { color: var(--amber); }
+    .stats-meta { font-size: 0.62rem; color: var(--text-dim); margin-top: 0.4rem; }
+
+    .stats-body { padding: 1rem 1.5rem 3rem; }
+
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1px; background: var(--border); margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: var(--surface); padding: 0.8rem 1rem;
+    }
+    .stat-card-label { font-size: 0.55rem; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.25rem; }
+    .stat-card-value { font-size: 1.2rem; color: var(--text-hi); }
+    .stat-card-value.amber { color: var(--amber); }
+
+    /* distribution bar */
+    .dist-label { font-size: 0.58rem; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .dist-bar { display: flex; height: 24px; gap: 1px; overflow: hidden; margin-bottom: 1rem; }
+    .dist-seg { height: 100%; transition: flex 0.4s ease; min-width: 0; }
+    .dist-seg.correct  { background: var(--correct); }
+    .dist-seg.calc     { background: var(--amber); }
+    .dist-seg.concept  { background: oklch(0.75 0.12 230); }
+    .dist-seg.error    { background: var(--danger); }
+    .dist-seg.none     { background: var(--border); }
+    .dist-legend { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; margin-bottom: 1.5rem; }
+    .dist-leg-item { font-size: 0.58rem; color: var(--text-mid); display: flex; align-items: center; gap: 0.3rem; }
+    .dist-leg-dot { width: 8px; height: 8px; flex-shrink: 0; }
+
+    /* problem table */
+    .prob-table { width: 100%; border-collapse: collapse; font-size: 0.65rem; }
+    .prob-table th {
+      text-align: left; color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      padding: 0.4rem 0.5rem; letter-spacing: 0.08em; font-weight: 400;
+    }
+    .prob-table td {
+      padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border);
+      color: var(--text); vertical-align: middle;
+    }
+    .prob-table tr:last-child td { border-bottom: none; }
+    .prob-table tr:hover td { background: var(--surface); }
+
+    .result-chip {
+      display: inline-block; padding: 0.1rem 0.4rem;
+      font-size: 0.55rem; letter-spacing: 0.06em;
+    }
+    .result-chip.correct  { border: 1px solid var(--correct); color: var(--correct); }
+    .result-chip.calc     { border: 1px solid var(--amber); color: var(--amber); }
+    .result-chip.concept  { border: 1px solid oklch(0.75 0.12 230); color: oklch(0.75 0.12 230); }
+    .result-chip.error    { border: 1px solid var(--danger); color: var(--danger); }
+
+    .time-pct-bar { height: 3px; background: var(--border); position: relative; overflow: hidden; width: 50px; display: inline-block; vertical-align: middle; margin-left: 4px; }
+    .time-pct-fill { height: 100%; background: var(--amber); position: absolute; left: 0; top: 0; }
+    .time-pct-fill.danger { background: var(--danger); }
+
+    .restart-btn {
+      margin-top: 2rem;
+      background: none; border: 1px solid var(--border-hi); color: var(--text-mid);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+      padding: 0.5rem 1.2rem; cursor: pointer; letter-spacing: 0.08em;
+      transition: border-color 0.1s, color 0.1s;
+    }
+    .restart-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+    /* ── font-size slider ── */
+    .font-slider {
+      appearance: none; width: 60px; height: 3px;
+      background: var(--border); outline: none; cursor: pointer;
+    }
+    .font-slider::-webkit-slider-thumb {
+      appearance: none; width: 10px; height: 10px;
+      border-radius: 50%; background: var(--amber); cursor: pointer;
+    }
+
+    /* ── fullscreen toggle ── */
+    /* (ctrl-btn used) */
+
+    /* ── mobile ── */
+    @media (max-width: 640px) {
+      .passage-layout { flex-direction: column; }
+      .passage-col {
+        flex: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border-hi);
+        max-height: 35vh;
+        padding-bottom: 1rem;
+      }
+      .passage-col.collapsed { max-height: 0; padding: 0; overflow: hidden; border-bottom: none; }
+      .split-handle { display: none; }
+      .passage-toggle-btn { display: block; }
+      .grading-btns { flex-wrap: wrap; }
+      .grade-btn { min-width: 50%; }
+    }
+
+    /* ── enter animation ── */
+    .fade-in { animation: fadeIn 0.18s ease both; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* katex overrides */
+    .katex { font-size: 1em !important; color: inherit; }
+    .katex-display { margin: 0.6em 0 !important; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     UPLOAD SCREEN
+═══════════════════════════════════════════ -->
+<div id="upload-screen" class="screen">
+  <div class="upload-label">problem viewer / v1</div>
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".md,.txt">
+    <div class="drop-icon">⌗</div>
+    <div class="drop-title">MD 파일 드래그 또는 클릭</div>
+    <div class="drop-sub">.md 형식 문제 파일</div>
+  </div>
+  <div class="upload-info" id="upload-info"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PROBLEM SCREEN
+═══════════════════════════════════════════ -->
+<div id="problem-screen" class="screen hidden">
+  <!-- top bar -->
+  <div class="top-bar">
+    <span class="progress" id="progress-label">1 / 1</span>
+    <span class="ref-text" id="ref-text"></span>
+    <div class="top-controls">
+      <input type="range" class="font-slider" id="font-slider" min="80" max="160" value="105" title="글자 크기">
+      <button class="ctrl-btn" id="fullscreen-btn" title="전체화면">⛶</button>
+    </div>
+  </div>
+
+  <!-- content area (swaps between modes) -->
+  <div class="content-area" id="content-area">
+    <!-- filled dynamically -->
+  </div>
+
+  <!-- action bar -->
+  <div class="action-bar">
+    <span id="timer-mini" style="font-size:0.6rem;color:var(--text-dim)"></span>
+    <button class="next-btn" id="next-btn">→ 조기 종료</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     GRADING PANEL
+═══════════════════════════════════════════ -->
+<div id="grading-panel">
+  <div class="grading-top">
+    <span class="answer-badge">정답</span>
+    <span class="answer-value" id="answer-display"></span>
+    <span style="margin-left:auto;font-size:0.6rem;color:var(--text-dim)" id="grade-time-info"></span>
+  </div>
+  <div class="solution-body" id="solution-body"></div>
+  <div class="grading-btns">
+    <button class="grade-btn grade-correct" data-result="correct">
+      <span class="key">[1]</span>✓ 맞음
+    </button>
+    <button class="grade-btn grade-calc" data-result="calc">
+      <span class="key">[2]</span>✗ 계산실수
+    </button>
+    <button class="grade-btn grade-concept" data-result="concept">
+      <span class="key">[3]</span>△ 발상/활용
+    </button>
+    <button class="grade-btn grade-error" data-result="error">
+      <span class="key">[4]</span>⚠ 문제오류
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     STATS SCREEN
+═══════════════════════════════════════════ -->
+<div id="stats-screen" class="screen hidden">
+  <div class="stats-header">
+    <div class="stats-title">session complete</div>
+    <div class="stats-big" id="accuracy-display">—</div>
+    <div class="stats-meta" id="stats-meta"></div>
+  </div>
+  <div class="stats-body">
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="dist-label">결과 분포</div>
+    <div class="dist-bar" id="dist-bar"></div>
+    <div class="dist-legend" id="dist-legend"></div>
+    <table class="prob-table" id="prob-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>부여</th>
+          <th>사용</th>
+          <th>효율</th>
+          <th>결과</th>
+        </tr>
+      </thead>
+      <tbody id="prob-tbody"></tbody>
+    </table>
+    <button class="restart-btn" id="restart-btn">↺ 새 파일 업로드</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+const state = {
+  problems: [],
+  idx: 0,
+  timer: null,       // interval id
+  allotted: 0,       // seconds
+  elapsed: 0,        // seconds counted up
+  timerDone: false,
+  waitingReveal: false,
+  session: [],       // { ref, allotted, used, earlyFinish, result }
+  filename: '',
+  splitPct: 48,      // %
+};
+
+// ═══════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════
+function fmtTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function renderKatex(el) {
+  if (window._katexReady && window.renderMathInElement) {
+    renderMathInElement(el, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$',  right: '$',  display: false },
+        { left: '\\[', right: '\\]', display: true },
+        { left: '\\(',  right: '\\)',  display: false },
+      ],
+      throwOnError: false,
+      output: 'html',
+    });
+  } else {
+    // retry once katex loads
+    setTimeout(() => renderKatex(el), 300);
+  }
+}
+
+// escape HTML (for safe innerHTML)
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// bold quoted spans within a line
+function boldQuotes(line) {
+  return line.replace(/'([^']+)'/g, (_, inner) => `<strong>${esc(inner)}</strong>`);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MD PARSER
+// ═══════════════════════════════════════════════════════════
+function parseProblems(raw) {
+  // split by bare --- lines
+  const blocks = raw.split(/\n---+\n/).map(b => b.trim()).filter(Boolean);
+  const problems = [];
+
+  for (const block of blocks) {
+    // skip header block (starts with # )
+    if (block.startsWith('#')) continue;
+
+    const refMatch = block.match(/^\[ref\]\s*(.+)/m);
+    const ref = refMatch ? refMatch[1].trim() : '';
+
+    // extract [문제] section
+    const problemMatch = block.match(/\[문제\]([\s\S]*?)(?=\[해설\]|\[정답\]|$)/);
+    if (!problemMatch) continue;
+
+    let problemRaw = problemMatch[1].trim();
+
+    // first line: number and time
+    const lines = problemRaw.split('\n');
+    const headerLine = lines[0].trim();
+    const timeMatch = headerLine.match(/(\d+(?:\.\d+)?)\s*분/);
+    const allotted = timeMatch ? Math.round(parseFloat(timeMatch[1]) * 60) : 0;
+    const numMatch = headerLine.match(/^\s*(\d+)/);
+    const num = numMatch ? numMatch[1] : '?';
+
+    const bodyLines = lines.slice(1);
+    const bodyRaw = bodyLines.join('\n').trim();
+
+    // extract [해설] section
+    const solMatch = block.match(/\[해설\]([\s\S]*?)(?=\[정답\]|$)/);
+    let solution = '', tip = '';
+    if (solMatch) {
+      const solRaw = solMatch[1];
+      const tipMatch = solRaw.match(/\[팁\]([\s\S]*?)(?=\[정답\]|$)/);
+      if (tipMatch) tip = tipMatch[1].trim();
+      // take [풀이] or full text minus [지문] header and [팁]
+      const poolMatch = solRaw.match(/\[풀이\]([\s\S]*?)(?=\[팁\]|\[정답\]|$)/);
+      if (poolMatch) {
+        solution = poolMatch[1].trim();
+      } else {
+        solution = solRaw.replace(/\[지문\][\s\S]*?(?=\[풀이\])/,'').replace(/\[풀이\]/,'').replace(/\[팁\][\s\S]*/,'').trim();
+      }
+    }
+
+    // answer
+    const ansMatch = block.match(/\[정답\]\s*(.+)/);
+    const answer = ansMatch ? ansMatch[1].trim() : '';
+
+    // detect passage (지문)
+    // presence of multi-choice markers or 보기/지문 hint + separate passage block
+    const hasPassage = detectPassage(bodyRaw);
+
+    // split passage vs question if applicable
+    let passageText = '', questionText = bodyRaw;
+    if (hasPassage) {
+      const split = splitPassageQuestion(bodyRaw);
+      passageText = split.passage;
+      questionText = split.question;
+    }
+
+    // extract choices (①②③ lines or ㄱ.ㄴ. lines)
+    const { main: questionMain, choices } = extractChoices(questionText);
+
+    // extract quoted phrases from choices for bold-in-passage
+    const quotedPhrases = extractQuotedPhrases(questionText);
+
+    problems.push({ ref, num, allotted, hasPassage, passageText, questionMain, choices, quotedPhrases, solution, tip, answer });
+  }
+
+  return problems;
+}
+
+function detectPassage(body) {
+  return /다음\s*(?:시|글|을|을\s*읽고|을\s*보고|내용을)/i.test(body) ||
+         /보기\s*\n/.test(body) ||
+         /^[①②③④⑤]/m.test(body);
+}
+
+function splitPassageQuestion(body) {
+  // try to find where the actual question sentence starts
+  // Heuristics: line ending with "는?" or "은?" or "것은?" or "고른 것은" or starts with "위 "
+  const qStartPatterns = [
+    /^위\s+/m,
+    /^다음\s+중\s+/m,
+    /^이\s+시에\s+/m,
+    /^[①-⑤]\s/m,
+    /^ㄱ\./m,
+  ];
+
+  for (const pat of qStartPatterns) {
+    const m = body.search(pat);
+    if (m > 100) { // only split if passage is substantial
+      return { passage: body.slice(0, m).trim(), question: body.slice(m).trim() };
+    }
+  }
+
+  // fallback: split at "보기" section if present
+  const bogiIdx = body.search(/^보기\s*$/m);
+  if (bogiIdx > 50) {
+    const beforeBogi = body.slice(0, bogiIdx).trim();
+    // find the actual question before 보기
+    const qMatch = beforeBogi.match(/([\s\S]+?)(\n[^\n]*\n에\s*대한|\n위\s+)/);
+    if (qMatch) {
+      return { passage: qMatch[1].trim(), question: body.slice(bogiIdx - qMatch[2].length).trim() };
+    }
+    return { passage: beforeBogi, question: body.slice(bogiIdx).trim() };
+  }
+
+  return { passage: '', question: body };
+}
+
+function extractChoices(text) {
+  // numbered: ① ② ③ ④ ⑤
+  const circledNums = ['①','②','③','④','⑤'];
+  // or letter bullets: ㄱ. ㄴ. ㄷ. ㄹ. ㅁ.
+  const koreanBullets = ['ㄱ.','ㄴ.','ㄷ.','ㄹ.','ㅁ.'];
+
+  const lines = text.split('\n');
+  const choiceLines = [];
+  const mainLines = [];
+
+  let inChoices = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!inChoices) {
+      if (circledNums.some(c => trimmed.startsWith(c)) || koreanBullets.some(c => trimmed.startsWith(c))) {
+        inChoices = true;
+        choiceLines.push(trimmed);
+      } else {
+        mainLines.push(line);
+      }
+    } else {
+      if (trimmed === '' && choiceLines.length > 0) {
+        // could be blank line between groups
+        choiceLines.push(line);
+      } else {
+        choiceLines.push(trimmed);
+      }
+    }
+  }
+
+  return {
+    main: mainLines.join('\n').trim(),
+    choices: choiceLines,
+  };
+}
+
+function extractQuotedPhrases(text) {
+  const phrases = [];
+  const re = /'([^']+)'/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const p = m[1].trim();
+    if (p.length >= 2) phrases.push(p);
+  }
+  return [...new Set(phrases)];
+}
+
+function applyPassageBold(passageHtml, quotedPhrases) {
+  let html = passageHtml;
+  for (const phrase of quotedPhrases) {
+    // escape for regex
+    const safe = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try {
+      html = html.replace(new RegExp(safe, 'g'), `<strong>${phrase}</strong>`);
+    } catch(e) {}
+  }
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SCREEN TRANSITIONS
+// ═══════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  const el = document.getElementById(id);
+  el.classList.remove('hidden');
+  el.classList.add('fade-in');
+  el.addEventListener('animationend', () => el.classList.remove('fade-in'), { once: true });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TIMER
+// ═══════════════════════════════════════════════════════════
+function startTimer() {
+  state.elapsed = 0;
+  state.timerDone = false;
+  state.waitingReveal = false;
+  updateTimerDisplay();
+  clearInterval(state.timer);
+  state.timer = setInterval(() => {
+    state.elapsed++;
+    if (state.elapsed >= state.allotted) {
+      clearInterval(state.timer);
+      state.timerDone = true;
+      state.waitingReveal = true;
+      onTimerEnd();
+    } else {
+      updateTimerDisplay();
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(state.timer);
+}
+
+function updateTimerDisplay() {
+  const remaining = state.allotted - state.elapsed;
+  // timer is only shown in problem screen now (embedded)
+  const timerEl = document.getElementById('timer-embed');
+  const miniEl = document.getElementById('timer-mini');
+  if (timerEl) {
+    timerEl.textContent = fmtTime(Math.max(0, remaining));
+    timerEl.classList.toggle('danger', remaining <= 30 && remaining > 0);
+    timerEl.classList.toggle('pulse', remaining <= 30 && remaining > 0);
+  }
+  if (miniEl) miniEl.textContent = '';
+}
+
+function onTimerEnd() {
+  const timerEl = document.getElementById('timer-embed');
+  if (timerEl) {
+    timerEl.textContent = '00:00';
+    timerEl.classList.add('danger');
+    timerEl.classList.remove('pulse');
+  }
+  const statusEl = document.getElementById('timer-status');
+  if (statusEl) statusEl.textContent = '→ 키 또는 버튼으로 정답 공개';
+  const nextBtn = document.getElementById('next-btn');
+  if (nextBtn) {
+    nextBtn.textContent = '→ 정답 공개';
+    nextBtn.classList.add('pulse-glow');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER PROBLEM
+// ═══════════════════════════════════════════════════════════
+function renderProblem(idx) {
+  const p = state.problems[idx];
+  state.allotted = p.allotted || 0;
+
+  // top bar
+  document.getElementById('progress-label').textContent = `${idx + 1} / ${state.problems.length}`;
+  document.getElementById('ref-text').textContent = p.ref;
+
+  // build content
+  const contentArea = document.getElementById('content-area');
+  contentArea.innerHTML = '';
+
+  if (p.hasPassage && p.passageText) {
+    renderTwoCol(contentArea, p);
+  } else {
+    renderSingleCol(contentArea, p);
+  }
+
+  // reset next button
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.textContent = '→ 조기 종료';
+  nextBtn.classList.remove('pulse-glow');
+
+  // reset timer status
+  const statusEl = document.getElementById('timer-status');
+  if (statusEl) statusEl.textContent = '';
+
+  // render math
+  renderKatex(contentArea);
+
+  // start timer
+  if (state.allotted > 0) {
+    startTimer();
+  } else {
+    // no time limit — show "→ 정답 공개" immediately
+    state.timerDone = true;
+    state.waitingReveal = true;
+    const timerEl = document.getElementById('timer-embed');
+    if (timerEl) timerEl.textContent = '∞';
+    nextBtn.textContent = '→ 정답 공개';
+  }
+}
+
+function renderTwoCol(container, p) {
+  const layout = document.createElement('div');
+  layout.className = 'passage-layout';
+
+  // passage col
+  const passageCol = document.createElement('div');
+  passageCol.className = 'passage-col';
+  passageCol.style.setProperty('--split', state.splitPct + '%');
+
+  const passLabel = document.createElement('span');
+  passLabel.className = 'passage-label';
+  passLabel.textContent = '지문';
+  passageCol.appendChild(passLabel);
+
+  // timer in passage col top
+  const timerWrap = document.createElement('div');
+  timerWrap.style.cssText = 'text-align:center;margin-bottom:0.8rem;';
+  const timerEl = document.createElement('div');
+  timerEl.className = 'timer-display';
+  timerEl.id = 'timer-embed';
+  timerEl.textContent = fmtTime(p.allotted);
+  const statusEl = document.createElement('div');
+  statusEl.className = 'timer-status';
+  statusEl.id = 'timer-status';
+  timerWrap.appendChild(timerEl);
+  timerWrap.appendChild(statusEl);
+  passageCol.appendChild(timerWrap);
+
+  const hr = document.createElement('hr');
+  hr.className = 'col-divider';
+  passageCol.appendChild(hr);
+
+  // passage text with bold quotes
+  const passTextEl = document.createElement('div');
+  passTextEl.className = 'problem-text';
+  let passHtml = esc(p.passageText);
+  passHtml = applyPassageBold(passHtml, p.quotedPhrases);
+  passTextEl.innerHTML = passHtml;
+  passageCol.appendChild(passTextEl);
+
+  // drag handle
+  const handle = document.createElement('div');
+  handle.className = 'split-handle';
+  initSplitDrag(handle, passageCol, layout);
+
+  // question col
+  const questionCol = document.createElement('div');
+  questionCol.className = 'question-col';
+
+  // mobile toggle button
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'passage-toggle-btn';
+  toggleBtn.textContent = '▼ 지문 보기/접기';
+  toggleBtn.onclick = () => {
+    passageCol.classList.toggle('collapsed');
+    toggleBtn.textContent = passageCol.classList.contains('collapsed') ? '▶ 지문 펼치기' : '▼ 지문 접기';
+  };
+  questionCol.appendChild(toggleBtn);
+
+  const qText = document.createElement('div');
+  qText.className = 'problem-text';
+  qText.innerHTML = esc(p.questionMain);
+  questionCol.appendChild(qText);
+
+  if (p.choices.length) {
+    renderChoices(questionCol, p.choices);
+  }
+
+  layout.appendChild(passageCol);
+  layout.appendChild(handle);
+  layout.appendChild(questionCol);
+  container.appendChild(layout);
+}
+
+function renderSingleCol(container, p) {
+  // timer row
+  const timerRow = document.createElement('div');
+  timerRow.className = 'timer-row';
+  const timerWrap = document.createElement('div');
+  timerWrap.style.cssText = 'text-align:center;';
+  const timerEl = document.createElement('div');
+  timerEl.className = 'timer-display';
+  timerEl.id = 'timer-embed';
+  timerEl.textContent = fmtTime(p.allotted);
+  const statusEl = document.createElement('div');
+  statusEl.className = 'timer-status';
+  statusEl.id = 'timer-status';
+  timerWrap.appendChild(timerEl);
+  timerWrap.appendChild(statusEl);
+  timerRow.appendChild(timerWrap);
+  container.appendChild(timerRow);
+
+  // divider
+  const divider = document.createElement('hr');
+  divider.style.cssText = 'border:none;border-top:1px solid var(--border-hi);margin:0 1.2rem;';
+  container.appendChild(divider);
+
+  // body
+  const body = document.createElement('div');
+  body.className = 'problem-body';
+
+  const qText = document.createElement('div');
+  qText.className = 'problem-text';
+  qText.innerHTML = esc(p.questionMain);
+  body.appendChild(qText);
+
+  if (p.choices.length) {
+    renderChoices(body, p.choices);
+  }
+
+  container.appendChild(body);
+}
+
+function renderChoices(container, choices) {
+  const wrap = document.createElement('div');
+  wrap.className = 'choices';
+  for (const line of choices) {
+    if (!line.trim()) continue;
+    const span = document.createElement('span');
+    span.className = 'choice-line';
+    span.innerHTML = boldQuotes(esc(line));
+    wrap.appendChild(span);
+  }
+  container.appendChild(wrap);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SPLIT DRAG
+// ═══════════════════════════════════════════════════════════
+function initSplitDrag(handle, passageCol, layout) {
+  let dragging = false;
+  handle.addEventListener('mousedown', e => {
+    dragging = true;
+    handle.classList.add('dragging');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const rect = layout.getBoundingClientRect();
+    const pct = Math.max(20, Math.min(75, ((e.clientX - rect.left) / rect.width) * 100));
+    state.splitPct = pct;
+    passageCol.style.flex = `0 0 ${pct}%`;
+  });
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+    handle.classList.remove('dragging');
+  });
+  // touch
+  handle.addEventListener('touchstart', e => {
+    dragging = true; e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    const rect = layout.getBoundingClientRect();
+    const pct = Math.max(20, Math.min(75, ((e.touches[0].clientX - rect.left) / rect.width) * 100));
+    state.splitPct = pct;
+    passageCol.style.flex = `0 0 ${pct}%`;
+  });
+  document.addEventListener('touchend', () => { dragging = false; });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GRADING
+// ═══════════════════════════════════════════════════════════
+function openGrading() {
+  stopTimer();
+  const p = state.problems[state.idx];
+  const used = state.elapsed;
+  const earlyFinish = !state.timerDone || (used < state.allotted);
+
+  // display answer
+  document.getElementById('answer-display').textContent = p.answer;
+  const pct = state.allotted > 0 ? Math.round((used / state.allotted) * 100) : 100;
+  document.getElementById('grade-time-info').textContent =
+    state.allotted > 0 ? `${fmtTime(used)} / ${fmtTime(state.allotted)}  (${pct}%)` : '';
+
+  // build solution content
+  const body = document.getElementById('solution-body');
+  body.innerHTML = '';
+
+  if (p.solution) {
+    const sec = document.createElement('div');
+    sec.className = 'solution-section';
+    const lbl = document.createElement('span');
+    lbl.className = 'solution-label';
+    lbl.textContent = '풀이';
+    sec.appendChild(lbl);
+    const txt = document.createElement('div');
+    txt.className = 'solution-text';
+    txt.textContent = p.solution;
+    sec.appendChild(txt);
+    body.appendChild(sec);
+  }
+
+  if (p.tip) {
+    const sec = document.createElement('div');
+    sec.className = 'solution-section';
+    const lbl = document.createElement('span');
+    lbl.className = 'solution-label';
+    lbl.textContent = '팁';
+    sec.appendChild(lbl);
+    const txt = document.createElement('div');
+    txt.className = 'tip-text';
+    txt.textContent = p.tip;
+    sec.appendChild(txt);
+    body.appendChild(sec);
+  }
+
+  renderKatex(body);
+
+  // open panel
+  document.getElementById('grading-panel').classList.add('open');
+
+  // store partial record (result to be filled)
+  state._pendingRecord = { ref: p.ref, allotted: state.allotted, used, earlyFinish };
+}
+
+function submitGrade(result) {
+  const record = { ...state._pendingRecord, result };
+  state.session.push(record);
+  saveSession();
+
+  document.getElementById('grading-panel').classList.remove('open');
+
+  state.idx++;
+  if (state.idx >= state.problems.length) {
+    showStats();
+  } else {
+    renderProblem(state.idx);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NEXT BUTTON LOGIC
+// ═══════════════════════════════════════════════════════════
+function handleNext() {
+  if (state.waitingReveal || state.timerDone) {
+    // reveal answer
+    openGrading();
+    state.waitingReveal = false;
+    document.getElementById('next-btn').textContent = '→ 다음 문제';
+    document.getElementById('next-btn').classList.remove('pulse-glow');
+  } else {
+    // early stop
+    stopTimer();
+    state.timerDone = true;
+    state.waitingReveal = false;
+    openGrading();
+    document.getElementById('next-btn').classList.remove('pulse-glow');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════════════
+function showStats() {
+  showScreen('stats-screen');
+
+  const total = state.session.length;
+  const errors = state.session.filter(r => r.result === 'error').length;
+  const correct = state.session.filter(r => r.result === 'correct').length;
+  const calc = state.session.filter(r => r.result === 'calc').length;
+  const concept = state.session.filter(r => r.result === 'concept').length;
+  const denom = total - errors;
+  const accuracy = denom > 0 ? Math.round((correct / denom) * 100) : 0;
+
+  // time efficiency (correct only)
+  const timedCorrect = state.session.filter(r => r.result === 'correct' && r.allotted > 0);
+  const avgPct = timedCorrect.length > 0
+    ? Math.round(timedCorrect.reduce((s,r) => s + (r.used/r.allotted), 0) / timedCorrect.length * 100)
+    : null;
+
+  document.getElementById('accuracy-display').innerHTML =
+    `<span>${accuracy}</span>%`;
+  document.getElementById('stats-meta').textContent =
+    `${correct} / ${denom}문제 정답` +
+    (avgPct !== null ? `  ·  평균 시간 효율 ${avgPct}%` : '');
+
+  // stat cards
+  const grid = document.getElementById('stats-grid');
+  grid.innerHTML = '';
+  const cards = [
+    { label: '전체 문제', value: total },
+    { label: '정답', value: correct, amber: true },
+    { label: '계산실수', value: calc },
+    { label: '발상/활용', value: concept },
+    { label: '문제 오류', value: errors },
+  ];
+  for (const c of cards) {
+    const div = document.createElement('div');
+    div.className = 'stat-card';
+    div.innerHTML = `<div class="stat-card-label">${c.label}</div><div class="stat-card-value${c.amber?' amber':''}">${c.value}</div>`;
+    grid.appendChild(div);
+  }
+
+  // distribution bar
+  const bar = document.getElementById('dist-bar');
+  bar.innerHTML = '';
+  const distData = [
+    { key: 'correct', count: correct, label: '맞음', cls: 'correct' },
+    { key: 'calc',    count: calc,    label: '계산실수', cls: 'calc' },
+    { key: 'concept', count: concept, label: '발상/활용', cls: 'concept' },
+    { key: 'error',   count: errors,  label: '문제 오류', cls: 'error' },
+  ];
+  for (const d of distData) {
+    if (d.count === 0) continue;
+    const seg = document.createElement('div');
+    seg.className = `dist-seg ${d.cls}`;
+    seg.style.flex = d.count;
+    seg.title = `${d.label}: ${d.count}`;
+    bar.appendChild(seg);
+  }
+  if (total === 0) {
+    const seg = document.createElement('div');
+    seg.className = 'dist-seg none';
+    seg.style.flex = 1;
+    bar.appendChild(seg);
+  }
+
+  // legend
+  const legend = document.getElementById('dist-legend');
+  legend.innerHTML = '';
+  const colorMap = { correct: 'var(--correct)', calc: 'var(--amber)', concept: 'oklch(0.75 0.12 230)', error: 'var(--danger)' };
+  for (const d of distData) {
+    const item = document.createElement('div');
+    item.className = 'dist-leg-item';
+    item.innerHTML = `<div class="dist-leg-dot" style="background:${colorMap[d.cls]}"></div>${d.label} ${d.count}`;
+    legend.appendChild(item);
+  }
+
+  // table
+  const tbody = document.getElementById('prob-tbody');
+  tbody.innerHTML = '';
+  const resultLabels = { correct:'맞음', calc:'계산실수', concept:'발상/활용', error:'문제오류' };
+  state.session.forEach((r, i) => {
+    const pct = r.allotted > 0 ? Math.round((r.used / r.allotted) * 100) : null;
+    const tr = document.createElement('tr');
+    const pctBar = pct !== null
+      ? `<div class="time-pct-bar"><div class="time-pct-fill${pct>100?' danger':''}" style="width:${Math.min(pct,100)}%"></div></div>`
+      : '';
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td>${r.allotted > 0 ? fmtTime(r.allotted) : '—'}</td>
+      <td>${fmtTime(r.used)}</td>
+      <td>${pct !== null ? pct+'%' : '—'}${pctBar}</td>
+      <td><span class="result-chip ${r.result}">${resultLabels[r.result]}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════════════════════════
+function saveSession() {
+  try {
+    const sessions = JSON.parse(localStorage.getItem('problem-viewer-sessions') || '[]');
+    // find existing session for this file today or add
+    const today = new Date().toISOString().slice(0,10);
+    const existing = sessions.find(s => s.filename === state.filename && s.date === today);
+    const record = { filename: state.filename, date: today, problems: state.session };
+    if (existing) {
+      Object.assign(existing, record);
+    } else {
+      sessions.unshift(record);
+      if (sessions.length > 20) sessions.pop();
+    }
+    localStorage.setItem('problem-viewer-sessions', JSON.stringify(sessions));
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UPLOAD
+// ═══════════════════════════════════════════════════════════
+function handleFile(file) {
+  if (!file) return;
+  state.filename = file.name;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const raw = e.target.result;
+    const problems = parseProblems(raw);
+    if (problems.length === 0) {
+      document.getElementById('upload-info').textContent = '문제를 찾을 수 없습니다. MD 형식을 확인하세요.';
+      return;
+    }
+    state.problems = problems;
+    state.idx = 0;
+    state.session = [];
+    document.getElementById('upload-info').textContent = `${problems.length}개 문제 인식됨`;
+    setTimeout(() => {
+      showScreen('problem-screen');
+      renderProblem(0);
+    }, 200);
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EVENT LISTENERS
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // upload
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragging'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragging');
+    handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+  // next button
+  document.getElementById('next-btn').addEventListener('click', handleNext);
+
+  // grading buttons
+  document.querySelectorAll('.grade-btn').forEach(btn => {
+    btn.addEventListener('click', () => submitGrade(btn.dataset.result));
+  });
+
+  // restart
+  document.getElementById('restart-btn').addEventListener('click', () => {
+    stopTimer();
+    showScreen('upload-screen');
+    document.getElementById('upload-info').textContent = '';
+    fileInput.value = '';
+  });
+
+  // keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') {
+      const panel = document.getElementById('grading-panel');
+      if (panel.classList.contains('open')) return; // don't interfere
+      handleNext();
+    }
+    if (e.key === '1') submitGradeIfOpen('correct');
+    if (e.key === '2') submitGradeIfOpen('calc');
+    if (e.key === '3') submitGradeIfOpen('concept');
+    if (e.key === '4') submitGradeIfOpen('error');
+  });
+
+  function submitGradeIfOpen(result) {
+    if (document.getElementById('grading-panel').classList.contains('open')) {
+      submitGrade(result);
+    }
+  }
+
+  // font slider
+  const slider = document.getElementById('font-slider');
+  slider.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--problem-fs', (slider.value / 100) + 'rem');
+  });
+
+  // fullscreen
+  document.getElementById('fullscreen-btn').addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  });
+});
+</script>
+</body>
+</html>
