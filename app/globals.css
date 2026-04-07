@@ -154,6 +154,21 @@ body::after {
 .nav-link:hover  { color: var(--accent); }
 .nav-link.active { color: var(--text-bright); }
 
+/* Demo open button */
+.demo-open-btn {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--bg);
+  background: var(--amber);
+  padding: 0.55rem 1.4rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.12s;
+}
+.demo-open-btn:hover { background: oklch(0.88 0.14 85); }
+
 /* Type badge */
 .badge {
   font-family: var(--font-mono);

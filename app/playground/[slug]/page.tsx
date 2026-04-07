@@ -12,7 +12,7 @@ export async function generateStaticParams() {
 
 function safeUrl(url: string | undefined): string | undefined {
   if (!url) return undefined
-  return url.startsWith('https://') ? url : undefined
+  return (url.startsWith('https://') || url.startsWith('/')) ? url : undefined
 }
 
 export default async function ProjectDetailPage({ params }: Props) {
@@ -81,16 +81,13 @@ export default async function ProjectDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Demo project: external link */}
+      {/* Demo project: demo link */}
       {safeUrl(project.demo) && (
         <div>
           <div className="section-head"><span>01</span> 데모</div>
           <a
             href={safeUrl(project.demo)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="nav-link"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            className="demo-open-btn"
           >
             데모 열기 →
           </a>
