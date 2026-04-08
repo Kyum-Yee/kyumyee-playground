@@ -540,6 +540,11 @@
 ═══════════════════════════════════════════ -->
 <div id="upload-screen" class="screen">
   <div class="upload-label">problem viewer / v1</div>
+  <div id="resume-banner" style="display:none;margin-bottom:1.2rem;text-align:center;">
+    <div id="resume-info" style="font-size:0.62rem;color:var(--text-mid);margin-bottom:0.6rem;"></div>
+    <button id="resume-btn" style="background:var(--amber);color:var(--bg);border:none;font-family:'JetBrains Mono',monospace;font-size:0.72rem;padding:0.45rem 1.2rem;cursor:pointer;letter-spacing:0.06em;">↺ 이어하기</button>
+    <button id="resume-discard-btn" style="background:none;color:var(--text-dim);border:1px solid var(--border);font-family:'JetBrains Mono',monospace;font-size:0.62rem;padding:0.45rem 0.8rem;cursor:pointer;margin-left:0.5rem;">× 지우기</button>
+  </div>
   <div class="drop-zone" id="drop-zone">
     <input type="file" id="file-input" accept=".md,.txt">
     <div class="drop-icon">⌗</div>
@@ -645,6 +650,7 @@ const state = {
   waitingReveal: false,
   session: [],       // { ref, allotted, used, earlyFinish, result }
   filename: '',
+  rawMd: '',
   splitPct: 48,      // %
 };
 
@@ -1363,10 +1369,37 @@ function showStats() {
 // ═══════════════════════════════════════════════════════════
 //  PERSISTENCE
 // ═══════════════════════════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════════════════════════
+const DRAFT_KEY = 'problem-viewer-draft';
+
+function saveDraft() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      filename: state.filename,
+      rawMd: state.rawMd,
+      idx: state.idx,
+      session: state.session,
+      splitPct: state.splitPct,
+    }));
+  } catch(e) {}
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+}
+
+function loadDraft() {
+  try {
+    const d = localStorage.getItem(DRAFT_KEY);
+    return d ? JSON.parse(d) : null;
+  } catch(e) { return null; }
+}
+
 function saveSession() {
+  saveDraft();
   try {
     const sessions = JSON.parse(localStorage.getItem('problem-viewer-sessions') || '[]');
-    // find existing session for this file today or add
     const today = new Date().toISOString().slice(0,10);
     const existing = sessions.find(s => s.filename === state.filename && s.date === today);
     const record = { filename: state.filename, date: today, problems: state.session };
@@ -1397,6 +1430,8 @@ function handleFile(file) {
     state.problems = problems;
     state.idx = 0;
     state.session = [];
+    state.rawMd = raw;
+    saveDraft();
     document.getElementById('upload-info').textContent = `${problems.length}개 문제 인식됨`;
     setTimeout(() => {
       showScreen('problem-screen');
@@ -1433,10 +1468,43 @@ document.addEventListener('DOMContentLoaded', () => {
   // restart
   document.getElementById('restart-btn').addEventListener('click', () => {
     stopTimer();
+    clearDraft();
     showScreen('upload-screen');
     document.getElementById('upload-info').textContent = '';
+    document.getElementById('resume-banner').style.display = 'none';
     fileInput.value = '';
   });
+
+  // resume from draft
+  const draft = loadDraft();
+  if (draft && draft.rawMd && draft.filename) {
+    const resumeInfo = document.getElementById('resume-info');
+    const completed = (draft.session || []).length;
+    const total = parseProblems(draft.rawMd).length;
+    resumeInfo.textContent = `${draft.filename}  —  ${completed} / ${total} 완료`;
+    document.getElementById('resume-banner').style.display = 'block';
+
+    document.getElementById('resume-btn').addEventListener('click', () => {
+      const problems = parseProblems(draft.rawMd);
+      state.problems = problems;
+      state.filename = draft.filename;
+      state.rawMd = draft.rawMd;
+      state.session = draft.session || [];
+      state.splitPct = draft.splitPct || 48;
+      state.idx = state.session.length; // resume from next unsolved
+      if (state.idx >= problems.length) {
+        showStats();
+      } else {
+        showScreen('problem-screen');
+        renderProblem(state.idx);
+      }
+    });
+
+    document.getElementById('resume-discard-btn').addEventListener('click', () => {
+      clearDraft();
+      document.getElementById('resume-banner').style.display = 'none';
+    });
+  }
 
   // keyboard
   document.addEventListener('keydown', e => {
