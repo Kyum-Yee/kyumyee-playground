@@ -14,7 +14,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -226,7 +226,7 @@
 
     /* text content */
     .problem-text {
-      font-family: 'Newsreader', serif;
+      font-family: 'Nanum Myeongjo', serif;
       font-size: var(--problem-fs);
       line-height: 1.75;
       color: var(--text-hi);
@@ -253,7 +253,7 @@
       margin-top: 0.8rem;
     }
     .choice-line {
-      font-family: 'Newsreader', serif;
+      font-family: 'Nanum Myeongjo', serif;
       font-size: calc(var(--problem-fs) * 0.95);
       line-height: 1.65;
       color: var(--text-hi);
@@ -326,7 +326,7 @@
       padding: 0.15rem 0.5rem; letter-spacing: 0.1em;
     }
     .answer-value {
-      font-size: 0.85rem; color: var(--text-hi); font-family: 'Newsreader', serif;
+      font-size: 0.85rem; color: var(--text-hi); font-family: 'Nanum Myeongjo', serif;
     }
 
     .solution-body {
@@ -337,18 +337,47 @@
     .solution-body::-webkit-scrollbar-thumb { background: var(--border); }
 
     .solution-section { margin-bottom: 1.2rem; }
+
+    /* problem review in grading panel */
+    .problem-review { opacity: 0.72; }
+    .review-passage {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: calc(var(--problem-fs) * 0.88);
+      line-height: 1.7; color: var(--text);
+      white-space: pre-wrap; word-break: keep-all;
+      border-left: 2px solid var(--border-hi);
+      padding-left: 0.8rem; margin-bottom: 0.6rem;
+    }
+    .review-question {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: calc(var(--problem-fs) * 0.9);
+      line-height: 1.7; color: var(--text);
+      white-space: pre-wrap; word-break: keep-all;
+      margin-bottom: 0.4rem;
+    }
+    .review-choices { margin-top: 0.4rem; }
+    .review-choice-line {
+      font-family: 'Nanum Myeongjo', serif;
+      font-size: calc(var(--problem-fs) * 0.85);
+      line-height: 1.6; color: var(--text-mid);
+      display: block; padding: 0.2rem 0;
+    }
+    .review-choice-line strong {
+      color: var(--amber); font-weight: 400;
+      background: var(--amber-pale); padding: 0 0.1em;
+    }
     .solution-label {
       font-size: 0.58rem; letter-spacing: 0.18em; text-transform: uppercase;
       color: var(--text-dim); margin-bottom: 0.4rem; display: block;
     }
     .solution-text {
-      font-family: 'Newsreader', serif;
+      font-family: 'Nanum Myeongjo', serif;
       font-size: calc(var(--problem-fs) * 0.95);
       line-height: 1.7; color: var(--text);
       white-space: pre-wrap; word-break: keep-all;
     }
     .tip-text {
-      font-family: 'Newsreader', serif;
+      font-family: 'Nanum Myeongjo', serif;
       font-size: calc(var(--problem-fs) * 0.92);
       line-height: 1.65; color: var(--text-mid);
       white-space: pre-wrap; word-break: keep-all;
@@ -979,6 +1008,7 @@ function renderTwoCol(container, p) {
   passTextEl.className = 'problem-text';
   let passHtml = esc(p.passageText);
   passHtml = applyPassageBold(passHtml, p.quotedPhrases);
+  p._passageHtml = passHtml; // cache for grading panel
   passTextEl.innerHTML = passHtml;
   passageCol.appendChild(passTextEl);
 
@@ -1121,6 +1151,43 @@ function openGrading() {
   // build solution content
   const body = document.getElementById('solution-body');
   body.innerHTML = '';
+
+  // show problem question
+  {
+    const sec = document.createElement('div');
+    sec.className = 'solution-section problem-review';
+    const lbl = document.createElement('span');
+    lbl.className = 'solution-label';
+    lbl.textContent = '문제';
+    sec.appendChild(lbl);
+    if (p.hasPassage && p.passageText) {
+      const passageEl = document.createElement('div');
+      passageEl.className = 'review-passage';
+      passageEl.innerHTML = p._passageHtml || esc(p.passageText);
+      sec.appendChild(passageEl);
+    }
+    const qEl = document.createElement('div');
+    qEl.className = 'review-question';
+    qEl.textContent = p.questionMain;
+    sec.appendChild(qEl);
+    if (p.choices && p.choices.length) {
+      const choicesEl = document.createElement('div');
+      choicesEl.className = 'review-choices';
+      p.choices.forEach(line => {
+        if (!line.trim()) return;
+        const span = document.createElement('span');
+        span.className = 'review-choice-line';
+        span.innerHTML = boldQuotes(esc(line));
+        choicesEl.appendChild(span);
+      });
+      sec.appendChild(choicesEl);
+    }
+    body.appendChild(sec);
+    // divider
+    const hr = document.createElement('hr');
+    hr.style.cssText = 'border:none;border-top:1px solid var(--border-hi);margin:1rem 0;';
+    body.appendChild(hr);
+  }
 
   if (p.solution) {
     const sec = document.createElement('div');
