@@ -719,12 +719,22 @@ function parseProblems(raw) {
     const lines = problemRaw.split('\n');
     const headerLine = lines[0].trim();
     const timeMatch = headerLine.match(/(\d+(?:\.\d+)?)\s*분/);
-    const allotted = timeMatch ? Math.round(parseFloat(timeMatch[1]) * 60) : 0;
+    const allotted = timeMatch ? Math.round(parseFloat(timeMatch[1]) * 60 / 2) : 0;
     const numMatch = headerLine.match(/^\s*(\d+)/);
     const num = numMatch ? numMatch[1] : '?';
 
+    // remainder of header line after "숫자 (시간)" pattern → prepend to body
+    let headerRemainder = '';
+    if (numMatch) {
+      // strip leading number + optional (N분) token from header
+      headerRemainder = headerLine
+        .replace(/^\s*\d+/, '')          // remove leading number
+        .replace(/\([^)]*분[^)]*\)/, '') // remove (N분) group
+        .trim();
+    }
+
     const bodyLines = lines.slice(1);
-    const bodyRaw = bodyLines.join('\n').trim();
+    const bodyRaw = (headerRemainder ? headerRemainder + '\n' : '') + bodyLines.join('\n').trim();
 
     // extract [해설] section
     const solMatch = block.match(/\[해설\]([\s\S]*?)(?=\[정답\]|$)/);
@@ -765,6 +775,18 @@ function parseProblems(raw) {
     const quotedPhrases = extractQuotedPhrases(questionText);
 
     problems.push({ ref, num, allotted, hasPassage, passageText, questionMain, choices, quotedPhrases, solution, tip, answer });
+  }
+
+  // inherit last seen passage for problems that have no passage of their own
+  let lastPassage = '';
+  for (const p of problems) {
+    if (p.hasPassage && p.passageText) {
+      lastPassage = p.passageText;
+    } else if (!p.hasPassage && lastPassage) {
+      p.passageText = lastPassage;
+      p.hasPassage = true;
+      p._inheritedPassage = true;
+    }
   }
 
   return problems;
