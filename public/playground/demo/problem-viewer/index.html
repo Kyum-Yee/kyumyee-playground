@@ -632,7 +632,10 @@
       </thead>
       <tbody id="prob-tbody"></tbody>
     </table>
-    <button class="restart-btn" id="restart-btn">↺ 새 파일 업로드</button>
+    <div style="display:flex;gap:0.5rem;margin-top:2rem;flex-wrap:wrap;">
+      <button class="restart-btn" id="restart-btn" style="margin-top:0;">↺ 새 파일 업로드</button>
+      <button class="restart-btn" id="download-csv-btn" style="margin-top:0;border-color:var(--border-hi);color:var(--text-mid);">↓ CSV 다운로드</button>
+    </div>
   </div>
 </div>
 
@@ -1367,9 +1370,56 @@ function showStats() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  PERSISTENCE
+//  CSV DOWNLOAD
+// ═══════════════════════════════════════════════════════════
+function downloadCSV() {
+  const resultLabels = { correct:'맞음', calc:'계산실수', concept:'발상/활용', error:'문제오류' };
+  const header = ['#', 'ref', '부여시간(초)', '사용시간(초)', '효율(%)', '결과'];
+  const rows = state.session.map((r, i) => {
+    const pct = r.allotted > 0 ? Math.round((r.used / r.allotted) * 100) : '';
+    return [
+      i + 1,
+      '"' + (r.ref || '').replace(/"/g, '""') + '"',
+      r.allotted || '',
+      r.used,
+      pct,
+      resultLabels[r.result] || r.result,
+    ].join(',');
+  });
+
+  const total = state.session.length;
+  const errors = state.session.filter(r => r.result === 'error').length;
+  const correct = state.session.filter(r => r.result === 'correct').length;
+  const denom = total - errors;
+  const accuracy = denom > 0 ? Math.round((correct / denom) * 100) : 0;
+  const timedCorrect = state.session.filter(r => r.result === 'correct' && r.allotted > 0);
+  const avgPct = timedCorrect.length > 0
+    ? Math.round(timedCorrect.reduce((s, r) => s + (r.used / r.allotted), 0) / timedCorrect.length * 100)
+    : null;
+
+  const summary = [
+    '',
+    `파일,${state.filename}`,
+    `날짜,${new Date().toISOString().slice(0, 10)}`,
+    `정답률,${accuracy}% (${correct}/${denom})`,
+    avgPct !== null ? `평균시간효율,${avgPct}%` : '',
+  ].filter(Boolean);
+
+  const csv = '\uFEFF' + [header.join(','), ...rows, ...summary].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const baseName = state.filename.replace(/\.[^.]+$/, '');
+  a.href = url;
+  a.download = `${baseName}_정오답표_${dateStr}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ═══════════════════════════════════════════════════════════
 //  PERSISTENCE
+// ═══════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════
 const DRAFT_KEY = 'problem-viewer-draft';
 
@@ -1464,6 +1514,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.grade-btn').forEach(btn => {
     btn.addEventListener('click', () => submitGrade(btn.dataset.result));
   });
+
+  // csv download
+  document.getElementById('download-csv-btn').addEventListener('click', downloadCSV);
 
   // restart
   document.getElementById('restart-btn').addEventListener('click', () => {
