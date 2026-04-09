@@ -738,12 +738,13 @@ function parseProblems(raw) {
 
     // extract [해설] section
     const solMatch = block.match(/\[해설\]([\s\S]*?)(?=\[정답\]|$)/);
-    let solution = '', tip = '';
+    let solution = '', tip = '', 지문해설 = '';
     if (solMatch) {
       const solRaw = solMatch[1];
+      const 지문Match = solRaw.match(/\[지문\]([\s\S]*?)(?=\[풀이\]|\[팁\]|\[정답\]|$)/);
+      if (지문Match) 지문해설 = 지문Match[1].trim();
       const tipMatch = solRaw.match(/\[팁\]([\s\S]*?)(?=\[정답\]|$)/);
       if (tipMatch) tip = tipMatch[1].trim();
-      // take [풀이] or full text minus [지문] header and [팁]
       const poolMatch = solRaw.match(/\[풀이\]([\s\S]*?)(?=\[팁\]|\[정답\]|$)/);
       if (poolMatch) {
         solution = poolMatch[1].trim();
@@ -774,7 +775,7 @@ function parseProblems(raw) {
     // extract quoted phrases from choices for bold-in-passage
     const quotedPhrases = extractQuotedPhrases(questionText);
 
-    problems.push({ ref, num, allotted, hasPassage, passageText, questionMain, choices, quotedPhrases, solution, tip, answer });
+    problems.push({ ref, num, allotted, hasPassage, passageText, questionMain, choices, quotedPhrases, solution, tip, 지문해설, answer });
   }
 
   // inherit last seen passage for problems that have no passage of their own
@@ -793,39 +794,34 @@ function parseProblems(raw) {
 }
 
 function detectPassage(body) {
-  return /다음\s*(?:시|글|을|을\s*읽고|을\s*보고|내용을)/i.test(body) ||
-         /보기\s*\n/.test(body) ||
-         /^[①②③④⑤]/m.test(body);
+  // Only treat as having a passage when there's genuine prose/poem preceding the question.
+  // 보기/선지 단독으로는 지문으로 판별하지 않는다.
+  return /다음\s*(?:글|시|내용|작품|을|를)?\s*(?:을|를)?\s*읽고/i.test(body) ||
+         /다음\s*(?:글|시)\s*(?:에서|을|를)/i.test(body) ||
+         /다음을\s*(?:보고|읽고)/i.test(body);
 }
 
 function splitPassageQuestion(body) {
-  // try to find where the actual question sentence starts
-  // Heuristics: line ending with "는?" or "은?" or "것은?" or "고른 것은" or starts with "위 "
+  // Patterns that signal start of actual question (after passage)
   const qStartPatterns = [
-    /^위\s+/m,
-    /^다음\s+중\s+/m,
-    /^이\s+시에\s+/m,
+    /^윗글[의을이]\s*/m,          // 윗글의, 윗글을, 윗글이
+    /^위\s+글[의을이]/m,
+    /^위\s+시[의을이]/m,
+    /^위\s+작품[의을이]/m,
+    /^\d+\s*\(\d/m,               // embedded "N (N분)" problem-number line
     /^[①-⑤]\s/m,
     /^ㄱ\./m,
+    /^다음\s+중\s+/m,
+    /^이\s+시에\s+/m,
   ];
 
   for (const pat of qStartPatterns) {
     const m = body.search(pat);
-    if (m > 100) { // only split if passage is substantial
+    if (m > 80) {
+      // for embedded problem-number lines like "1 (3분)  표현상 특징"
+      // we want to keep that line in the question section
       return { passage: body.slice(0, m).trim(), question: body.slice(m).trim() };
     }
-  }
-
-  // fallback: split at "보기" section if present
-  const bogiIdx = body.search(/^보기\s*$/m);
-  if (bogiIdx > 50) {
-    const beforeBogi = body.slice(0, bogiIdx).trim();
-    // find the actual question before 보기
-    const qMatch = beforeBogi.match(/([\s\S]+?)(\n[^\n]*\n에\s*대한|\n위\s+)/);
-    if (qMatch) {
-      return { passage: qMatch[1].trim(), question: body.slice(bogiIdx - qMatch[2].length).trim() };
-    }
-    return { passage: beforeBogi, question: body.slice(bogiIdx).trim() };
   }
 
   return { passage: '', question: body };
@@ -1218,6 +1214,20 @@ function openGrading() {
     const hr = document.createElement('hr');
     hr.style.cssText = 'border:none;border-top:1px solid var(--border-hi);margin:1rem 0;';
     body.appendChild(hr);
+  }
+
+  if (p.지문해설) {
+    const sec = document.createElement('div');
+    sec.className = 'solution-section';
+    const lbl = document.createElement('span');
+    lbl.className = 'solution-label';
+    lbl.textContent = '지문';
+    sec.appendChild(lbl);
+    const txt = document.createElement('div');
+    txt.className = 'solution-text';
+    txt.textContent = p.지문해설;
+    sec.appendChild(txt);
+    body.appendChild(sec);
   }
 
   if (p.solution) {
