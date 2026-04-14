@@ -531,6 +531,40 @@
     /* katex overrides */
     .katex { font-size: 1em !important; color: inherit; }
     .katex-display { margin: 0.6em 0 !important; }
+
+    /* ── markdown rendering ── */
+    .problem-text em, .solution-text em, .tip-text em,
+    .review-question em, .review-passage em { font-style: italic; }
+
+    /* headings inside problem text (reset pre-wrap / amber-bold) */
+    .problem-text h1, .problem-text h2, .problem-text h3, .problem-text h4,
+    .solution-text h1, .solution-text h2, .solution-text h3,
+    .tip-text h1, .tip-text h2, .tip-text h3 {
+      white-space: normal;
+      font-weight: 500;
+      color: var(--text-hi);
+      background: none;
+      margin: 0.6em 0 0.3em;
+      font-size: 1em;
+      letter-spacing: 0.02em;
+    }
+    .problem-text h2, .solution-text h2 {
+      border-bottom: 1px solid var(--border-hi);
+      padding-bottom: 0.15em;
+    }
+
+    /* inline code */
+    code.md-code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88em;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 0.05em 0.3em;
+      color: var(--text-hi);
+    }
+
+    /* list items */
+    .md-li { display: block; padding-left: 1.2em; text-indent: -1.2em; }
   </style>
 </head>
 <body>
@@ -689,9 +723,73 @@ function esc(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// bold quoted spans within a line
+// bold quoted spans within a line (applied on already-escaped HTML)
 function boldQuotes(line) {
   return line.replace(/'([^']+)'/g, (_, inner) => `<strong>${esc(inner)}</strong>`);
+}
+
+// ── Markdown + LaTeX-safe renderer ──────────────────────────
+// Converts raw text to HTML:
+//   - Protects $…$ / $$…$$ / \(…\) / \[…\] from HTML-escaping
+//   - Basic inline markdown: **bold**, *italic*, `code`
+//   - Block markdown: # Heading, - list item
+//   - Legacy Korean: 'phrase' → amber bold (same as boldQuotes)
+//   - Everything else: HTML-escaped, newlines preserved via pre-wrap
+function renderMd(raw) {
+  if (!raw) return '';
+
+  // 1. Stash LaTeX regions so they bypass HTML-escaping and markdown transforms
+  const stash = [];
+  function protect(m) { stash.push(m); return `@@M${stash.length - 1}@@`; }
+
+  let s = raw;
+  // display math (greedy-safe: use non-greedy)
+  s = s.replace(/\$\$([\s\S]*?)\$\$/g, protect);
+  s = s.replace(/\\\[([\s\S]*?)\\\]/g, protect);
+  // inline math — avoid matching across line breaks for safety
+  s = s.replace(/\$([^\$\n\r]{1,200}?)\$/g, protect);
+  s = s.replace(/\\\(([^\)\n\r]{0,200}?)\\\)/g, protect);
+
+  // 2. HTML-escape the non-math content
+  s = esc(s);
+
+  // 3. Inline markdown (operate on HTML-escaped content)
+  // bold+italic
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  // bold
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // italic (avoid false-positives on lone asterisks)
+  s = s.replace(/\*([^\*\n]{1,120}?)\*/g, '<em>$1</em>');
+  // inline code
+  s = s.replace(/`([^`\n]{1,200})`/g, '<code class="md-code">$1</code>');
+  // legacy single-quote bold (Korean exam convention: '구절' → amber)
+  s = s.replace(/'([^'\n]{1,80})'/g, '<strong>$1</strong>');
+
+  // 4. Block-level transforms (line by line)
+  const lines = s.split('\n');
+  const out = [];
+  for (const line of lines) {
+    // headings: ### … ##  #
+    const hm = line.match(/^(#{1,4})\s+(.*)/);
+    if (hm) {
+      const lvl = hm[1].length;
+      out.push(`<h${lvl}>${hm[2]}</h${lvl}>`);
+      continue;
+    }
+    // unordered list: - item  or  * item
+    const lim = line.match(/^[-*]\s+(.*)/);
+    if (lim) {
+      out.push(`<span class="md-li">• ${lim[1]}</span>`);
+      continue;
+    }
+    out.push(line);
+  }
+  s = out.join('\n');
+
+  // 5. Restore LaTeX tokens (verbatim — not HTML-escaped)
+  s = s.replace(/@@M(\d+)@@/g, (_, i) => stash[+i]);
+
+  return s;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1033,7 +1131,7 @@ function renderTwoCol(container, p) {
   // passage text with bold quotes
   const passTextEl = document.createElement('div');
   passTextEl.className = 'problem-text';
-  let passHtml = esc(p.passageText);
+  let passHtml = renderMd(p.passageText);
   passHtml = applyPassageBold(passHtml, p.quotedPhrases);
   p._passageHtml = passHtml; // cache for grading panel
   passTextEl.innerHTML = passHtml;
@@ -1060,7 +1158,7 @@ function renderTwoCol(container, p) {
 
   const qText = document.createElement('div');
   qText.className = 'problem-text';
-  qText.innerHTML = esc(p.questionMain);
+  qText.innerHTML = renderMd(p.questionMain);
   questionCol.appendChild(qText);
 
   if (p.choices.length) {
@@ -1102,7 +1200,7 @@ function renderSingleCol(container, p) {
 
   const qText = document.createElement('div');
   qText.className = 'problem-text';
-  qText.innerHTML = esc(p.questionMain);
+  qText.innerHTML = renderMd(p.questionMain);
   body.appendChild(qText);
 
   if (p.choices.length) {
@@ -1119,7 +1217,7 @@ function renderChoices(container, choices) {
     if (!line.trim()) continue;
     const span = document.createElement('span');
     span.className = 'choice-line';
-    span.innerHTML = boldQuotes(esc(line));
+    span.innerHTML = renderMd(line);
     wrap.appendChild(span);
   }
   container.appendChild(wrap);
@@ -1170,7 +1268,7 @@ function openGrading() {
   const earlyFinish = !state.timerDone || (used < state.allotted);
 
   // display answer
-  document.getElementById('answer-display').textContent = p.answer;
+  document.getElementById('answer-display').innerHTML = renderMd(p.answer);
   const pct = state.allotted > 0 ? Math.round((used / state.allotted) * 100) : 100;
   document.getElementById('grade-time-info').textContent =
     state.allotted > 0 ? `${fmtTime(used)} / ${fmtTime(state.allotted)}  (${pct}%)` : '';
@@ -1195,7 +1293,7 @@ function openGrading() {
     }
     const qEl = document.createElement('div');
     qEl.className = 'review-question';
-    qEl.textContent = p.questionMain;
+    qEl.innerHTML = renderMd(p.questionMain);
     sec.appendChild(qEl);
     if (p.choices && p.choices.length) {
       const choicesEl = document.createElement('div');
@@ -1204,7 +1302,7 @@ function openGrading() {
         if (!line.trim()) return;
         const span = document.createElement('span');
         span.className = 'review-choice-line';
-        span.innerHTML = boldQuotes(esc(line));
+        span.innerHTML = renderMd(line);
         choicesEl.appendChild(span);
       });
       sec.appendChild(choicesEl);
@@ -1225,7 +1323,7 @@ function openGrading() {
     sec.appendChild(lbl);
     const txt = document.createElement('div');
     txt.className = 'solution-text';
-    txt.textContent = p.지문해설;
+    txt.innerHTML = renderMd(p.지문해설);
     sec.appendChild(txt);
     body.appendChild(sec);
   }
@@ -1239,7 +1337,7 @@ function openGrading() {
     sec.appendChild(lbl);
     const txt = document.createElement('div');
     txt.className = 'solution-text';
-    txt.textContent = p.solution;
+    txt.innerHTML = renderMd(p.solution);
     sec.appendChild(txt);
     body.appendChild(sec);
   }
@@ -1253,12 +1351,12 @@ function openGrading() {
     sec.appendChild(lbl);
     const txt = document.createElement('div');
     txt.className = 'tip-text';
-    txt.textContent = p.tip;
+    txt.innerHTML = renderMd(p.tip);
     sec.appendChild(txt);
     body.appendChild(sec);
   }
 
-  renderKatex(body);
+  renderKatex(document.getElementById('grading-panel'));
 
   // open panel
   document.getElementById('grading-panel').classList.add('open');
