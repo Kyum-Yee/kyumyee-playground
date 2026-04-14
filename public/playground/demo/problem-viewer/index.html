@@ -565,6 +565,31 @@
 
     /* list items */
     .md-li { display: block; padding-left: 1.2em; text-indent: -1.2em; }
+
+    /* markdown table */
+    table.md-table {
+      border-collapse: collapse;
+      white-space: normal;
+      font-size: 0.92em;
+      margin: 0.6em 0;
+      width: auto;
+      max-width: 100%;
+    }
+    table.md-table th, table.md-table td {
+      border: 1px solid var(--border-hi);
+      padding: 0.3em 0.7em;
+      text-align: left;
+      vertical-align: middle;
+      color: var(--text);
+    }
+    table.md-table th {
+      background: var(--surface2);
+      color: var(--text-hi);
+      font-weight: 500;
+      letter-spacing: 0.03em;
+    }
+    table.md-table tr:nth-child(even) td { background: var(--surface); }
+    table.md-table tr:hover td { background: var(--surface2); }
   </style>
 </head>
 <body>
@@ -765,24 +790,55 @@ function renderMd(raw) {
   // legacy single-quote bold (Korean exam convention: '구절' → amber)
   s = s.replace(/'([^'\n]{1,80})'/g, '<strong>$1</strong>');
 
-  // 4. Block-level transforms (line by line)
+  // 4. Block-level transforms
+  function parseTableRow(row) {
+    // '| a | b |' → ['a', 'b']
+    return row.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
+  }
+
   const lines = s.split('\n');
   const out = [];
-  for (const line of lines) {
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // ── table: first line starts with |, second line is |---|
+    if (/^\s*\|/.test(line) && i + 1 < lines.length && /^\s*\|[\s\-:|]+\|/.test(lines[i + 1])) {
+      const tableLines = [];
+      while (i < lines.length && /^\s*\|/.test(lines[i])) {
+        tableLines.push(lines[i++]);
+      }
+      if (tableLines.length >= 2) {
+        const hCells = parseTableRow(tableLines[0]);
+        const bRows  = tableLines.slice(2); // skip separator
+        let html = '<table class="md-table"><thead><tr>';
+        for (const c of hCells) html += `<th>${c.trim()}</th>`;
+        html += '</tr></thead><tbody>';
+        for (const row of bRows) {
+          html += '<tr>';
+          for (const c of parseTableRow(row)) html += `<td>${c.trim()}</td>`;
+          html += '</tr>';
+        }
+        html += '</tbody></table>';
+        out.push(html);
+      }
+      continue;
+    }
+
     // headings: ### … ##  #
     const hm = line.match(/^(#{1,4})\s+(.*)/);
     if (hm) {
-      const lvl = hm[1].length;
-      out.push(`<h${lvl}>${hm[2]}</h${lvl}>`);
-      continue;
+      out.push(`<h${hm[1].length}>${hm[2]}</h${hm[1].length}>`);
+      i++; continue;
     }
     // unordered list: - item  or  * item
     const lim = line.match(/^[-*]\s+(.*)/);
     if (lim) {
       out.push(`<span class="md-li">• ${lim[1]}</span>`);
-      continue;
+      i++; continue;
     }
     out.push(line);
+    i++;
   }
   s = out.join('\n');
 
