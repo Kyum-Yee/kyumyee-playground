@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import { SUBJECTS, getSubject, fetchStageMarkdown } from '@/lib/expert-library'
 import StageNav from './StageNav'
+import MarkdownActions from './MarkdownActions'
 
 marked.use(markedKatex({ throwOnError: false, output: 'html', nonStandard: true }))
 
@@ -123,8 +124,24 @@ export default async function SubjectPage({
         )}
       </div>
 
-      {/* Stage tabs */}
-      <StageNav slug={slug} stages={subject.stages} currentStage={stage} />
+      {/* Stage tabs + actions */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '0.75rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        <StageNav slug={slug} stages={subject.stages} currentStage={stage} />
+        {markdown && (
+          <MarkdownActions
+            markdown={markdown}
+            filename={`${subject.slug}-stage${stage}.md`}
+          />
+        )}
+      </div>
 
       {/* Content */}
       <div style={{ marginTop: '2rem' }}>
