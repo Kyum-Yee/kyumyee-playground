@@ -852,8 +852,10 @@ function renderMd(raw) {
 //  MD PARSER
 // ═══════════════════════════════════════════════════════════
 function parseProblems(raw) {
-  // split by bare --- lines
-  const blocks = raw.split(/\n---+\n/).map(b => b.trim()).filter(Boolean);
+  // split by [ref] lines — each problem block starts at a [ref] tag
+  const blocks = raw.split(/(?=^\[ref\])/m)
+    .map(b => b.trim())
+    .filter(b => b.startsWith('[ref]'));
   const problems = [];
 
   for (const block of blocks) {
@@ -912,15 +914,23 @@ function parseProblems(raw) {
     const answer = ansMatch ? ansMatch[1].trim() : '';
 
     // detect passage (지문)
-    // presence of multi-choice markers or 보기/지문 hint + separate passage block
-    const hasPassage = detectPassage(bodyRaw);
-
-    // split passage vs question if applicable
+    // 1순위: """ ... """ 명시적 구분자 (단독 줄)
+    // 2순위: "다음 글을 읽고…" + "윗글의…" 휴리스틱 (구버전 출력 호환)
+    let hasPassage = false;
     let passageText = '', questionText = bodyRaw;
-    if (hasPassage) {
-      const split = splitPassageQuestion(bodyRaw);
-      passageText = split.passage;
-      questionText = split.question;
+
+    const tripleQuoteSplit = splitByTripleQuotes(bodyRaw);
+    if (tripleQuoteSplit) {
+      hasPassage = true;
+      passageText = tripleQuoteSplit.passage;
+      questionText = tripleQuoteSplit.question;
+    } else {
+      hasPassage = detectPassage(bodyRaw);
+      if (hasPassage) {
+        const split = splitPassageQuestion(bodyRaw);
+        passageText = split.passage;
+        questionText = split.question;
+      }
     }
 
     // extract choices (①②③ lines or ㄱ.ㄴ. lines)
@@ -945,6 +955,24 @@ function parseProblems(raw) {
   }
 
   return problems;
+}
+
+function splitByTripleQuotes(body) {
+  // 명시적 지문 구분자: """ ... """ (각각 단독 줄)
+  // 매치되면 { passage, question } 반환, 아니면 null
+  const re = /^[ \t]*"""[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*"""[ \t]*$/m;
+  const m = body.match(re);
+  if (!m) return null;
+
+  const passage = m[1].trim();
+  if (!passage) return null;
+
+  // 지문 블록 앞부분(도입부 "다음 글을 읽고…" 등)은 버리고
+  // 지문 블록 뒷부분(발문·선지·보기)을 question으로 사용
+  const after = body.slice(m.index + m[0].length).trim();
+  if (!after) return null;
+
+  return { passage, question: after };
 }
 
 function detectPassage(body) {
@@ -1418,7 +1446,9 @@ function openGrading() {
   document.getElementById('grading-panel').classList.add('open');
 
   // store partial record (result to be filled)
-  state._pendingRecord = { ref: p.ref, allotted: state.allotted, used, earlyFinish };
+  const questionText = [p.questionMain, ...(p.choices || [])].filter(Boolean).join('\n');
+  state._pendingRecord = { ref: p.ref, allotted: state.allotted, used, earlyFinish,
+    question: questionText, answer: p.answer || '', solution: p.solution || '' };
 }
 
 function submitGrade(result) {
@@ -1560,16 +1590,20 @@ function showStats() {
 // ═══════════════════════════════════════════════════════════
 function downloadCSV() {
   const resultLabels = { correct:'맞음', calc:'계산실수', concept:'발상/활용', error:'문제오류' };
-  const header = ['#', 'ref', '부여시간(초)', '사용시간(초)', '효율(%)', '결과'];
+  const csvEsc = s => '"' + String(s || '').replace(/"/g, '""') + '"';
+  const header = ['#', 'ref', '부여시간(초)', '사용시간(초)', '효율(%)', '결과', '문제', '정답', '해설'];
   const rows = state.session.map((r, i) => {
     const pct = r.allotted > 0 ? Math.round((r.used / r.allotted) * 100) : '';
     return [
       i + 1,
-      '"' + (r.ref || '').replace(/"/g, '""') + '"',
+      csvEsc(r.ref),
       r.allotted || '',
       r.used,
       pct,
       resultLabels[r.result] || r.result,
+      csvEsc(r.question),
+      csvEsc(r.answer),
+      csvEsc(r.solution),
     ].join(',');
   });
 
