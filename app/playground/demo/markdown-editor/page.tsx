@@ -75,13 +75,34 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+function highlightDiffSpan(raw: string): string {
+  // `⟶` 기준으로 좌측(원문)은 빨강, 우측(수정)은 초록 span 으로 분할
+  const arrow = '⟶'
+  const idx = raw.indexOf(arrow)
+  if (idx === -1) {
+    return `<span class="edit-point">${escapeHtml(raw)}</span>`
+  }
+  const left = raw.slice(0, idx).replace(/\s+$/, '')
+  const leftPad = raw.slice(left.length, idx) // 화살표 직전 공백
+  const right = raw.slice(idx + arrow.length)
+  const rightLead = right.match(/^\s*/)?.[0] ?? ''
+  const rightBody = right.slice(rightLead.length)
+  return (
+    `<span class="edit-orig">${escapeHtml(left)}</span>` +
+    escapeHtml(leftPad) +
+    `<span class="edit-arrow">${escapeHtml(arrow)}</span>` +
+    escapeHtml(rightLead) +
+    `<span class="edit-revised">${escapeHtml(rightBody)}</span>`
+  )
+}
+
 function buildHighlightedHTML(text: string, points: EditPoint[]): string {
   if (points.length === 0) return escapeHtml(text)
   let out = ''
   let cursor = 0
   for (const p of points) {
     out += escapeHtml(text.slice(cursor, p.start))
-    out += `<span class="edit-point">${escapeHtml(text.slice(p.start, p.end))}</span>`
+    out += highlightDiffSpan(text.slice(p.start, p.end))
     cursor = p.end
   }
   out += escapeHtml(text.slice(cursor))
