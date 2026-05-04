@@ -273,8 +273,18 @@ export default function MarkdownEditorPage() {
             onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
           />
         ) : text ? (
-          <div className="prose-wrap">
-            <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />
+          <div
+            style={{
+              minHeight: '70vh',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              border: '1px solid var(--border)',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div className="prose-wrap">
+              <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />
+            </div>
           </div>
         ) : (
           <div
