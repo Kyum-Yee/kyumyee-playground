@@ -278,8 +278,11 @@ export default function MarkdownEditorPage() {
               minHeight: '70vh',
               maxHeight: '80vh',
               overflowY: 'auto',
+              overflowX: 'hidden',
               border: '1px solid var(--border)',
               boxSizing: 'border-box',
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
             }}
           >
             <div className="prose-wrap">
