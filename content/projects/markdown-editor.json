@@ -1,0 +1,8 @@
+{
+  "title": "Markdown Reader & Editor",
+  "type": "non-ai",
+  "categories": ["Demo", "Frontend"],
+  "tags": ["Markdown", "TypeScript"],
+  "description": ".md 파일을 업로드해 raw·rendered로 토글하며 보고 편집·저장한다. library와 동일한 prose-wrap 서식.",
+  "demo": "/playground/demo/markdown-editor"
+}
