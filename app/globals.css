@@ -336,6 +336,27 @@ body::after {
 }
 .prose .katex { font-size: 1.05em; }
 
+/* ── Markdown editor: raw overlay + 수정포인트 highlight ──────────────────── */
+.md-editor .md-editor-overlay {
+  /* 거울. textarea 텍스트는 transparent 라 이게 실제로 보이는 텍스트 */
+  font-family: var(--font-jb-mono);
+}
+.md-editor .md-editor-overlay .edit-point {
+  background: rgba(248, 197, 70, 0.18);
+  border-bottom: 1px solid rgba(248, 197, 70, 0.55);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+/* textarea 자체는 글자 색이 transparent — selection 만 보이게 */
+.md-editor .md-editor-textarea::selection {
+  background: rgba(248, 197, 70, 0.35);
+  color: transparent;
+}
+.md-editor .md-editor-textarea::-moz-selection {
+  background: rgba(248, 197, 70, 0.35);
+  color: transparent;
+}
+
 /* ── Markdown editor: force wrap, no horizontal scroll ─────────────────────── */
 .md-editor .prose-wrap .prose pre {
   overflow-x: hidden;
