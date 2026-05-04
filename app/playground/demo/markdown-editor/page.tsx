@@ -11,12 +11,14 @@ marked.use(markedKatex({ throwOnError: false, output: 'html', nonStandard: true 
 type Mode = 'raw' | 'rendered'
 
 // 수정포인트 양식:
-//   {원문} ⟶ 수정          (편집)
-//   {원문} ⟶ ∅             (삭제)
-//   ∅ ⟶ 추가               (삽입 — 브레이스 없음)
-const DELETION_RE = /\{([^{}\n]+)\}\s*⟶\s*∅(?=\s|$)/gu
-const EDIT_RE = /\{([^{}\n]+)\}\s*⟶\s*([^{}\n∅]+?)(?=\s*(?:\{[^{}\n]+\}\s*⟶|$|\n))/gu
-const INSERT_RE = /(?<![{∅])∅\s*⟶\s*([^{}\n∅]+?)(?=\s*(?:\{[^{}\n]+\}\s*⟶|$|\n))/gu
+//   {(원문)} ⟶ (수정) ,,,   (편집)
+//   {(원문)} ⟶ () ,,,        (삭제 — 우측 빈 괄호)
+//   {()} ⟶ (추가) ,,,        (삽입 — 좌측 빈 괄호)
+//
+// 캡처:
+//   group 1 = 원문 (괄호 안. 빈 문자열이면 삽입)
+//   group 2 = 수정 (괄호 안. 빈 문자열이면 삭제)
+const EDIT_POINT_RE = /\{\(([\s\S]*?)\)\}\s*⟶\s*\(([\s\S]*?)\)\s*,,,/gu
 
 interface EditPoint {
   start: number
@@ -26,42 +28,16 @@ interface EditPoint {
 }
 
 function findEditPoints(text: string): EditPoint[] {
-  const candidates: EditPoint[] = []
-
-  for (const m of text.matchAll(DELETION_RE)) {
-    candidates.push({
+  const points: EditPoint[] = []
+  for (const m of text.matchAll(EDIT_POINT_RE)) {
+    points.push({
       start: m.index!,
       end: m.index! + m[0].length,
       original: m[1],
-      revised: '',
+      revised: m[2],
     })
   }
-  for (const m of text.matchAll(EDIT_RE)) {
-    candidates.push({
-      start: m.index!,
-      end: m.index! + m[0].length,
-      original: m[1],
-      revised: m[2].trim(),
-    })
-  }
-  for (const m of text.matchAll(INSERT_RE)) {
-    candidates.push({
-      start: m.index!,
-      end: m.index! + m[0].length,
-      original: '',
-      revised: m[1].trim(),
-    })
-  }
-
-  // 같은 시작 위치는 더 긴 매치 우선 (deletion vs edit 충돌 시 deletion 채택)
-  candidates.sort((a, b) => a.start - b.start || b.end - a.end)
-  const result: EditPoint[] = []
-  for (const p of candidates) {
-    const last = result[result.length - 1]
-    if (last && p.start < last.end) continue // 겹침 제거
-    result.push(p)
-  }
-  return result
+  return points
 }
 
 function findEditPointAt(points: EditPoint[], pos: number): EditPoint | null {
@@ -76,23 +52,20 @@ function escapeHtml(s: string): string {
 }
 
 function highlightDiffSpan(raw: string): string {
-  // `⟶` 기준으로 좌측(원문)은 빨강, 우측(수정)은 초록 span 으로 분할
-  const arrow = '⟶'
-  const idx = raw.indexOf(arrow)
-  if (idx === -1) {
+  // 새 양식: `{(원문)} ⟶ (수정) ,,,`
+  // 시각적으로 좌측 `(원문)` 빨강, 우측 `(수정)` 초록, 마커 (`{`, `}`, `⟶`, `,,,`) 회색
+  const m = raw.match(/^(\{)(\([\s\S]*?\))(\})(\s*⟶\s*)(\([\s\S]*?\))(\s*,,,)$/)
+  if (!m) {
     return `<span class="edit-point">${escapeHtml(raw)}</span>`
   }
-  const left = raw.slice(0, idx).replace(/\s+$/, '')
-  const leftPad = raw.slice(left.length, idx) // 화살표 직전 공백
-  const right = raw.slice(idx + arrow.length)
-  const rightLead = right.match(/^\s*/)?.[0] ?? ''
-  const rightBody = right.slice(rightLead.length)
+  const [, lBrace, leftParen, rBrace, arrow, rightParen, terminator] = m
   return (
-    `<span class="edit-orig">${escapeHtml(left)}</span>` +
-    escapeHtml(leftPad) +
+    `<span class="edit-marker">${escapeHtml(lBrace)}</span>` +
+    `<span class="edit-orig">${escapeHtml(leftParen)}</span>` +
+    `<span class="edit-marker">${escapeHtml(rBrace)}</span>` +
     `<span class="edit-arrow">${escapeHtml(arrow)}</span>` +
-    escapeHtml(rightLead) +
-    `<span class="edit-revised">${escapeHtml(rightBody)}</span>`
+    `<span class="edit-revised">${escapeHtml(rightParen)}</span>` +
+    `<span class="edit-marker">${escapeHtml(terminator)}</span>`
   )
 }
 
@@ -373,7 +346,7 @@ export default function MarkdownEditorPage() {
         >
           .md 파일을 업로드해 raw·rendered로 토글하며 보고 편집·저장한다. raw 모드에서{' '}
           <code style={{ background: 'var(--surface)', padding: '0 0.3em', color: 'var(--text)' }}>
-            {'{원문} ⟶ 수정'}
+            {'{(원문)} ⟶ (수정) ,,,'}
           </code>{' '}
           토막은 수정포인트로 강조된다 — 커서를 그 안에 두고{' '}
           <strong style={{ color: 'var(--accent)' }}>Tab</strong> 으로 수정안 반영,{' '}

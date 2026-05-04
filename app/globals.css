@@ -347,11 +347,14 @@ body::after {
   border-radius: 2px;
   padding: 0 1px;
 }
-/* ⟶ 기준 좌측(원문) = 빨강, 우측(수정) = 초록 */
+/* ⟶ 기준 좌측(원문) = 빨강, 우측(수정) = 초록, 마커({} ⟶ ,,,) = 회색 */
+.md-editor .md-editor-overlay .edit-marker {
+  color: var(--text-dim);
+}
 .md-editor .md-editor-overlay .edit-orig {
   background: rgba(229, 83, 75, 0.16);
   border-bottom: 1px solid rgba(229, 83, 75, 0.55);
-  border-radius: 2px 0 0 2px;
+  border-radius: 2px;
   padding: 0 1px;
 }
 .md-editor .md-editor-overlay .edit-arrow {
@@ -360,7 +363,7 @@ body::after {
 .md-editor .md-editor-overlay .edit-revised {
   background: rgba(76, 175, 110, 0.18);
   border-bottom: 1px solid rgba(76, 175, 110, 0.6);
-  border-radius: 0 2px 2px 0;
+  border-radius: 2px;
   padding: 0 1px;
 }
 /* textarea 자체는 글자 색이 transparent — selection 만 보이게 */
