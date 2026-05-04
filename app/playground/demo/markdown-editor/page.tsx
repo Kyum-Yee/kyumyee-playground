@@ -11,14 +11,14 @@ marked.use(markedKatex({ throwOnError: false, output: 'html', nonStandard: true 
 type Mode = 'raw' | 'rendered'
 
 // 수정포인트 양식:
-//   {(원문)} ⟶ (수정) ,,,   (편집)
-//   {(원문)} ⟶ () ,,,        (삭제 — 우측 빈 괄호)
-//   {()} ⟶ (추가) ,,,        (삽입 — 좌측 빈 괄호)
+//   {원문} ⟶ 수정 ,,,   (편집)
+//   {원문} ⟶ ,,,        (삭제 — 화살표 우측을 비움)
+//   {} ⟶ 추가 ,,,       (삽입 — 중괄호 안쪽을 비움)
 //
 // 캡처:
-//   group 1 = 원문 (괄호 안. 빈 문자열이면 삽입)
-//   group 2 = 수정 (괄호 안. 빈 문자열이면 삭제)
-const EDIT_POINT_RE = /\{\(([\s\S]*?)\)\}\s*⟶\s*\(([\s\S]*?)\)\s*,,,/gu
+//   group 1 = 원문 (중괄호 안. 빈 문자열이면 삽입)
+//   group 2 = 수정 (화살표와 종료 표시 사이. 빈 문자열이면 삭제)
+const EDIT_POINT_RE = /\{([\s\S]*?)\}\s*⟶\s*([\s\S]*?)\s*,,,/gu
 
 interface EditPoint {
   start: number
@@ -52,19 +52,19 @@ function escapeHtml(s: string): string {
 }
 
 function highlightDiffSpan(raw: string): string {
-  // 새 양식: `{(원문)} ⟶ (수정) ,,,`
-  // 시각적으로 좌측 `(원문)` 빨강, 우측 `(수정)` 초록, 마커 (`{`, `}`, `⟶`, `,,,`) 회색
-  const m = raw.match(/^(\{)(\([\s\S]*?\))(\})(\s*⟶\s*)(\([\s\S]*?\))(\s*,,,)$/)
+  // 양식: `{원문} ⟶ 수정 ,,,`
+  // 시각적으로 좌측 `원문` 빨강, 우측 `수정` 초록, 마커(`{`, `}`, `⟶`, `,,,`) 회색
+  const m = raw.match(/^(\{)([\s\S]*?)(\})(\s*⟶\s*)([\s\S]*?)(\s*,,,)$/)
   if (!m) {
     return `<span class="edit-point">${escapeHtml(raw)}</span>`
   }
-  const [, lBrace, leftParen, rBrace, arrow, rightParen, terminator] = m
+  const [, lBrace, original, rBrace, arrow, revised, terminator] = m
   return (
     `<span class="edit-marker">${escapeHtml(lBrace)}</span>` +
-    `<span class="edit-orig">${escapeHtml(leftParen)}</span>` +
+    `<span class="edit-orig">${escapeHtml(original)}</span>` +
     `<span class="edit-marker">${escapeHtml(rBrace)}</span>` +
     `<span class="edit-arrow">${escapeHtml(arrow)}</span>` +
-    `<span class="edit-revised">${escapeHtml(rightParen)}</span>` +
+    `<span class="edit-revised">${escapeHtml(revised)}</span>` +
     `<span class="edit-marker">${escapeHtml(terminator)}</span>`
   )
 }
@@ -346,7 +346,7 @@ export default function MarkdownEditorPage() {
         >
           .md 파일을 업로드해 raw·rendered로 토글하며 보고 편집·저장한다. raw 모드에서{' '}
           <code style={{ background: 'var(--surface)', padding: '0 0.3em', color: 'var(--text)' }}>
-            {'{(원문)} ⟶ (수정) ,,,'}
+            {'{원문} ⟶ 수정 ,,,'}
           </code>{' '}
           토막은 수정포인트로 강조된다 — 커서를 그 안에 두고{' '}
           <strong style={{ color: 'var(--accent)' }}>Tab</strong> 으로 수정안 반영,{' '}
