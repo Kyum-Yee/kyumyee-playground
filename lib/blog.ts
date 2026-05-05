@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { marked } from 'marked'
-import DOMPurify from 'isomorphic-dompurify'
+import sanitizeHtml from 'sanitize-html'
 import type { BlogMeta } from './content'
 
 const BLOG_DIR = path.join(process.cwd(), 'content/blog')
@@ -38,9 +38,13 @@ export function getPost(slug: string): { meta: BlogMeta; html: string } | null {
   const raw = fs.readFileSync(file, 'utf-8')
   const { data, content } = matter(raw)
 
-  const html = DOMPurify.sanitize(marked(content) as string, {
-    ALLOWED_TAGS: ['h1','h2','h3','h4','p','ul','ol','li','strong','em','code','pre','blockquote','a','img'],
-    ALLOWED_ATTR: ['href','src','alt','class','id'],
+  const html = sanitizeHtml(marked(content) as string, {
+    allowedTags: ['h1','h2','h3','h4','p','ul','ol','li','strong','em','code','pre','blockquote','a','img'],
+    allowedAttributes: {
+      a: ['href'],
+      img: ['src','alt'],
+      '*': ['class','id'],
+    },
   })
 
   return {
