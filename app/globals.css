@@ -420,22 +420,52 @@ body::after {
 }
 
 /* ── Markdown raw highlight (highlight.js standard markdown tokens) ───────── */
-/* /prompt/<slug> 의 prompt·reference 카테고리에서 raw <pre className="md-hl"> 에 적용. */
-.md-hl .hljs-section { color: var(--accent); font-weight: 600; }
-.md-hl .hljs-strong  { color: var(--accent); font-weight: 600; }
-.md-hl .hljs-emphasis { color: var(--text-dim); font-style: italic; }
-.md-hl .hljs-quote   { color: var(--text-dim); font-style: italic; }
-.md-hl .hljs-bullet  { color: var(--text-dim); }
-.md-hl .hljs-link    { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-.md-hl .hljs-string  { color: #7AA2F7; }                       /* link URL */
-.md-hl .hljs-code    {
+/* 적용 대상:
+ *   1) /prompt/<slug> 의 prompt·reference 카테고리 raw <pre className="md-hl">
+ *   2) 작성/데모 에디터의 overlay <pre className="md-editor-overlay md-hl">
+ * 색은 동일. background/padding 은 .md-hl 에서만 — overlay 는 textarea 와 정렬을 깨면 안 되므로 background 만 투명, padding 0 으로 별도 오버라이드.
+ */
+.md-hl .hljs-section,
+.md-editor-overlay .hljs-section { color: var(--accent); font-weight: 600; }
+
+.md-hl .hljs-strong,
+.md-editor-overlay .hljs-strong  { color: var(--accent); font-weight: 600; }
+
+.md-hl .hljs-emphasis,
+.md-editor-overlay .hljs-emphasis { color: var(--text-dim); font-style: italic; }
+
+.md-hl .hljs-quote,
+.md-editor-overlay .hljs-quote   { color: var(--text-dim); font-style: italic; }
+
+.md-hl .hljs-bullet,
+.md-editor-overlay .hljs-bullet  { color: var(--text-dim); }
+
+.md-hl .hljs-link,
+.md-editor-overlay .hljs-link    { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+.md-hl .hljs-string,
+.md-editor-overlay .hljs-string  { color: #7AA2F7; }
+
+.md-hl .hljs-symbol,
+.md-editor-overlay .hljs-symbol  { color: #E0AF68; }
+
+.md-hl .hljs-meta,
+.md-editor-overlay .hljs-meta,
+.md-hl .hljs-comment,
+.md-editor-overlay .hljs-comment { color: var(--text-dim); font-style: italic; }
+
+.md-hl .hljs-meta-string,
+.md-editor-overlay .hljs-meta-string { color: #7AA2F7; }
+
+/* hljs-code: detail 페이지에서는 inline pill, overlay 에서는 textarea 와 정렬 유지를 위해 색만 적용. */
+.md-hl .hljs-code {
   color: #C0CAF5;
   background: rgba(120, 150, 200, 0.10);
   padding: 0 0.25em;
   border-radius: 3px;
 }
-.md-hl .hljs-symbol  { color: #E0AF68; }                       /* hr / list markers in some grammars */
-.md-hl .hljs-meta    { color: var(--text-dim); }
-.md-hl .hljs-comment { color: var(--text-dim); font-style: italic; }
-/* code-fence content fallback (no nested language) */
-.md-hl .hljs-meta-string { color: #7AA2F7; }
+.md-editor-overlay .hljs-code {
+  color: #C0CAF5;
+  background: transparent;
+  padding: 0;
+}

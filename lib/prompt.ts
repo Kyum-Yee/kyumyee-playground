@@ -3,16 +3,8 @@ import path from 'path'
 import matter from 'gray-matter'
 import { marked } from 'marked'
 import sanitizeHtml from 'sanitize-html'
-import hljs from 'highlight.js/lib/core'
-import markdown from 'highlight.js/lib/languages/markdown'
 
-hljs.registerLanguage('markdown', markdown)
-
-/** raw markdown 본문을 highlight.js 의 standard markdown 토큰 클래스로 감싸 HTML 반환. */
-export function highlightMarkdown(body: string): string {
-  if (!body) return ''
-  return hljs.highlight(body, { language: 'markdown' }).value
-}
+export { highlightMarkdown } from './markdown-highlight'
 
 export const PROMPT_CATEGORIES = ['design', 'reference', 'prompt'] as const
 export type PromptCategory = typeof PROMPT_CATEGORIES[number]

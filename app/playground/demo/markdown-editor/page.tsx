@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { marked } from 'marked'
 import markedKatex from 'marked-katex-extension'
 import DOMPurify from 'dompurify'
+import { highlightMarkdown } from '@/lib/markdown-highlight'
 
 marked.use(markedKatex({ throwOnError: false, output: 'html', nonStandard: true }))
 
@@ -70,15 +71,15 @@ function highlightDiffSpan(raw: string): string {
 }
 
 function buildHighlightedHTML(text: string, points: EditPoint[]): string {
-  if (points.length === 0) return escapeHtml(text)
+  if (points.length === 0) return highlightMarkdown(text)
   let out = ''
   let cursor = 0
   for (const p of points) {
-    out += escapeHtml(text.slice(cursor, p.start))
+    out += highlightMarkdown(text.slice(cursor, p.start))
     out += highlightDiffSpan(text.slice(p.start, p.end))
     cursor = p.end
   }
-  out += escapeHtml(text.slice(cursor))
+  out += highlightMarkdown(text.slice(cursor))
   return out
 }
 
@@ -470,7 +471,7 @@ export default function MarkdownEditorPage() {
             <pre
               ref={preRef}
               aria-hidden="true"
-              className="md-editor-overlay"
+              className="md-editor-overlay md-hl"
               style={{
                 position: 'absolute',
                 top: 0,

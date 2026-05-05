@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import { highlightMarkdown } from '@/lib/markdown-highlight'
 
 interface Props {
   value: string
@@ -10,19 +11,8 @@ interface Props {
   password: string
   placeholder?: string
   rows?: number
-  /** Header label content (passed in to allow extra controls like KO/EN tabs). */
+  /** 헤더 우측에 추가할 추가 컨트롤(KO/EN 탭 등). */
   headerExtra?: React.ReactNode
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '0.55rem 0.75rem',
-  background: 'var(--bg)',
-  border: '1px solid var(--border)',
-  borderRadius: '4px',
-  color: 'var(--text-bright)',
-  font: 'inherit',
-  fontSize: '0.85rem',
 }
 
 const labelStyle: React.CSSProperties = {
@@ -34,12 +24,19 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.05em',
 }
 
+// overlay/textarea 정렬을 위해 반드시 동일하게 박는 layout 상수.
+const RAW_FONT_FAMILY = 'var(--font-jb-mono, monospace)'
+const RAW_FONT_SIZE = '0.85rem'
+const RAW_LINE_HEIGHT = 1.6
+const RAW_PADDING = '0.85rem 0.95rem'
+const EDITOR_HEIGHT = '22rem'
+
 export default function BodyEditorWithUpload({
   value,
   onChange,
   password,
   placeholder = '# 제목\n\n본문...',
-  rows = 20,
+  rows = 20, // eslint-disable-line @typescript-eslint/no-unused-vars
   headerExtra,
 }: Props) {
   const [showPreview, setShowPreview] = useState(false)
@@ -47,6 +44,8 @@ export default function BodyEditorWithUpload({
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const taRef = useRef<HTMLTextAreaElement>(null)
+  const preRef = useRef<HTMLPreElement>(null)
+  const [focused, setFocused] = useState(false)
 
   const insertAtCursor = useCallback((snippet: string) => {
     const ta = taRef.current
@@ -121,6 +120,23 @@ export default function BodyEditorWithUpload({
     for (const f of imgs) uploadFile(f)
   }, [uploadFile])
 
+  // overlay 거울에 들어갈 색칠된 HTML. trailing zero-width space 로 마지막 빈 줄 보존.
+  const highlightedHtml = useMemo(() => highlightMarkdown(value) + '​', [value])
+
+  // textarea 스크롤 → pre 거울에 transform 동기화
+  const onTextareaScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
+    const st = e.currentTarget.scrollTop
+    if (preRef.current) preRef.current.style.transform = `translateY(${-st}px)`
+  }, [])
+
+  // 텍스트 변경/모드 전환 시 거울 transform 재동기화
+  useEffect(() => {
+    if (showPreview) return
+    const ta = taRef.current
+    if (!ta || !preRef.current) return
+    preRef.current.style.transform = `translateY(${-ta.scrollTop}px)`
+  }, [value, showPreview])
+
   const previewHtml = useMemo(() => {
     if (!showPreview || !value) return ''
     return DOMPurify.sanitize(marked(value) as string)
@@ -180,7 +196,7 @@ export default function BodyEditorWithUpload({
         <div
           className="prose"
           style={{
-            minHeight: '20rem',
+            minHeight: EDITOR_HEIGHT,
             padding: '1rem',
             border: '1px solid var(--border)',
             borderRadius: '4px',
@@ -189,17 +205,82 @@ export default function BodyEditorWithUpload({
           dangerouslySetInnerHTML={{ __html: previewHtml }}
         />
       ) : (
-        <textarea
-          ref={taRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onPaste={onPaste}
-          onDrop={onDrop}
-          placeholder={placeholder}
-          rows={rows}
-          spellCheck={false}
-          style={{ ...inputStyle, minHeight: '20rem', resize: 'vertical', fontFamily: 'var(--font-jb-mono, monospace)' }}
-        />
+        <div
+          className="md-editor"
+          style={{
+            position: 'relative',
+            height: EDITOR_HEIGHT,
+            border: `1px solid ${focused ? 'var(--accent)' : 'var(--border)'}`,
+            background: 'var(--bg)',
+            borderRadius: '4px',
+            boxSizing: 'border-box',
+            overflow: 'hidden',
+            transition: 'border-color 0.12s',
+          }}
+        >
+          <pre
+            ref={preRef}
+            aria-hidden="true"
+            className="md-editor-overlay md-hl"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              margin: 0,
+              padding: RAW_PADDING,
+              fontFamily: RAW_FONT_FAMILY,
+              fontSize: RAW_FONT_SIZE,
+              lineHeight: RAW_LINE_HEIGHT,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'normal',
+              overflowWrap: 'break-word',
+              color: 'var(--text-bright)',
+              pointerEvents: 'none',
+              willChange: 'transform',
+              boxSizing: 'border-box',
+            }}
+            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+          />
+          <textarea
+            ref={taRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onScroll={onTextareaScroll}
+            onPaste={onPaste}
+            onDrop={onDrop}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder={placeholder}
+            spellCheck={false}
+            className="md-editor-textarea"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100%',
+              height: '100%',
+              background: 'transparent',
+              color: 'transparent',
+              caretColor: 'var(--text-bright)',
+              border: 'none',
+              padding: RAW_PADDING,
+              fontFamily: RAW_FONT_FAMILY,
+              fontSize: RAW_FONT_SIZE,
+              lineHeight: RAW_LINE_HEIGHT,
+              resize: 'none',
+              outline: 'none',
+              boxSizing: 'border-box',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'normal',
+              overflowWrap: 'break-word',
+            }}
+          />
+        </div>
       )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem' }}>
