@@ -1,9 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { marked } from 'marked'
-import DOMPurify from 'dompurify'
+import { useCallback, useEffect, useState } from 'react'
+import BodyEditorWithUpload from '@/components/BodyEditorWithUpload'
 
 const TODAY = () => new Date().toISOString().slice(0, 10)
 const ALLOWED_TAGS = ['AI', '프롬프트', '디자인'] as const
@@ -87,7 +86,6 @@ export default function BlogWritePage() {
   const [overwrite, setOverwrite] = useState(false)
 
   const [lang, setLang] = useState<Lang>('ko')
-  const [showPreview, setShowPreview] = useState(false)
 
   const [submitBusy, setSubmitBusy] = useState(false)
   const [submitMsg, setSubmitMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
@@ -152,11 +150,6 @@ export default function BlogWritePage() {
 
   const activeBody = lang === 'ko' ? bodyKo : bodyEn
   const setActiveBody = lang === 'ko' ? setBodyKo : setBodyEn
-
-  const previewHtml = useMemo(() => {
-    if (!showPreview || !activeBody) return ''
-    return DOMPurify.sanitize(marked(activeBody) as string)
-  }, [showPreview, activeBody])
 
   const toggleTag = (t: AllowedTag) => {
     const next = new Set(tags)
@@ -364,51 +357,19 @@ export default function BlogWritePage() {
       </div>
 
       <div style={fieldGap}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', gap: '0.5rem' }}>
-          <label style={{ ...labelStyle, marginBottom: 0 }}>body</label>
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
-            <button type="button" onClick={() => setLang('ko')} style={langTabBtn(lang === 'ko')}>KO</button>
-            <button type="button" onClick={() => setLang('en')} style={langTabBtn(lang === 'en')}>EN</button>
-            <span style={{ width: '0.5rem' }} />
-            <button
-              type="button"
-              onClick={() => setShowPreview(v => !v)}
-              className="font-mono"
-              style={{
-                fontSize: '0.7rem',
-                color: 'var(--text-dim)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              {showPreview ? '편집으로' : '미리보기'}
-            </button>
-          </div>
-        </div>
-        {showPreview ? (
-          <div
-            className="prose"
-            style={{
-              minHeight: '20rem',
-              padding: '1rem',
-              border: '1px solid var(--border)',
-              borderRadius: '4px',
-              background: 'var(--bg)',
-            }}
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
-          />
-        ) : (
-          <textarea
-            value={activeBody}
-            onChange={(e) => setActiveBody(e.target.value)}
-            placeholder={lang === 'ko' ? '# 제목\n\n본문...' : '# Heading\n\nBody...'}
-            rows={20}
-            spellCheck={false}
-            style={{ ...inputStyle, minHeight: '20rem', resize: 'vertical', fontFamily: 'var(--font-jb-mono, monospace)' }}
-          />
-        )}
+        <BodyEditorWithUpload
+          key={lang}
+          value={activeBody}
+          onChange={setActiveBody}
+          password={password}
+          placeholder={lang === 'ko' ? '# 제목\n\n본문...' : '# Heading\n\nBody...'}
+          headerExtra={
+            <>
+              <button type="button" onClick={() => setLang('ko')} style={langTabBtn(lang === 'ko')}>KO</button>
+              <button type="button" onClick={() => setLang('en')} style={langTabBtn(lang === 'en')}>EN</button>
+            </>
+          }
+        />
         <p className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
           수정 표기 양식: {'{원문}'} ⟶ 수정 ,,, (글 페이지에서 빨/초로 하이라이트됨)
         </p>
