@@ -10,8 +10,10 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "@modelcontextprotocol/sdk": "^1.28.0",
+    "@types/bcryptjs": "^2.4.6",
     "@types/dompurify": "^3.0.5",
     "@types/sanitize-html": "^2.16.1",
+    "bcryptjs": "^3.0.3",
     "dompurify": "^3.4.2",
     "gray-matter": "^4.0.3",
     "katex": "^0.16.44",
