@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 
 export const runtime = 'nodejs'
 
-const ALLOWED_CATEGORIES = ['design', 'reference', 'prompt'] as const
+const ALLOWED_CATEGORIES = ['design', 'reference', 'prompt', 'rolePlay'] as const
 type AllowedCategory = typeof ALLOWED_CATEGORIES[number]
 
 const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,79}$/

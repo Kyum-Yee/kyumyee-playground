@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import BodyEditorWithUpload from '@/components/BodyEditorWithUpload'
 
 const TODAY = () => new Date().toISOString().slice(0, 10)
-const CATEGORIES = ['design', 'reference', 'prompt'] as const
+const CATEGORIES = ['design', 'reference', 'prompt', 'rolePlay'] as const
 type Category = typeof CATEGORIES[number]
 
 const inputStyle: React.CSSProperties = {
@@ -253,7 +253,7 @@ export default function PromptWritePage() {
           ))}
         </div>
         <p className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
-          design = 8축 디자인 (이미지 첨부 가능) / reference = 번역 direction·reference / prompt = 일반 프롬프트
+          design = 8축 디자인 (이미지 첨부 가능) / reference = 번역 direction·reference / prompt = 일반 프롬프트 / rolePlay = 역할극 페르소나
         </p>
       </div>
 

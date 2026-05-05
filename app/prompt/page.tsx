@@ -14,6 +14,7 @@ const CATEGORY_LABEL: Record<PromptCategory, string> = {
   design: 'design',
   reference: 'reference',
   prompt: 'prompt',
+  rolePlay: 'rolePlay',
 }
 
 export default async function PromptListPage({ searchParams }: Props) {

@@ -6,7 +6,7 @@ import sanitizeHtml from 'sanitize-html'
 
 export { highlightMarkdown } from './markdown-highlight'
 
-export const PROMPT_CATEGORIES = ['design', 'reference', 'prompt'] as const
+export const PROMPT_CATEGORIES = ['design', 'reference', 'prompt', 'rolePlay'] as const
 export type PromptCategory = typeof PROMPT_CATEGORIES[number]
 
 const PROMPT_DIR = path.join(process.cwd(), 'content/prompt')
