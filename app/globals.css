@@ -376,6 +376,28 @@ body::after {
   color: transparent;
 }
 
+/* ── Edit-point highlighting for blog post pages ─────────────────────────── */
+.edit-host .edit-point {
+  background: rgba(248, 197, 70, 0.18);
+  border-bottom: 1px solid rgba(248, 197, 70, 0.55);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.edit-host .edit-marker { color: var(--text-dim); }
+.edit-host .edit-orig {
+  background: rgba(229, 83, 75, 0.16);
+  border-bottom: 1px solid rgba(229, 83, 75, 0.55);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.edit-host .edit-arrow { color: var(--text-dim); }
+.edit-host .edit-revised {
+  background: rgba(76, 175, 110, 0.18);
+  border-bottom: 1px solid rgba(76, 175, 110, 0.6);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 /* ── Markdown editor: force wrap, no horizontal scroll ─────────────────────── */
 .md-editor .prose-wrap .prose pre {
   overflow-x: hidden;

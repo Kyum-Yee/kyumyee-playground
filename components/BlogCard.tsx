@@ -26,7 +26,7 @@ export default function BlogCard({ post }: { post: BlogMeta }) {
         ))}
         {post.tags.map(t => (
           <Link key={t} href={`/blog?tag=${encodeURIComponent(t)}`} className="tag">
-            #{t}
+            {t}
           </Link>
         ))}
       </div>

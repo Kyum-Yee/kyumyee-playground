@@ -6,6 +6,8 @@ import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 
 const TODAY = () => new Date().toISOString().slice(0, 10)
+const ALLOWED_TAGS = ['AI', '프롬프트', '디자인'] as const
+type AllowedTag = typeof ALLOWED_TAGS[number]
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -64,6 +66,8 @@ function Btn({
   )
 }
 
+type Lang = 'ko' | 'en'
+
 export default function BlogWritePage() {
   const [password, setPassword] = useState('')
   const [unlocked, setUnlocked] = useState(false)
@@ -71,19 +75,23 @@ export default function BlogWritePage() {
   const [authBusy, setAuthBusy] = useState(false)
 
   const [slug, setSlug] = useState('')
-  const [title, setTitle] = useState('')
+  const [titleKo, setTitleKo] = useState('')
+  const [titleEn, setTitleEn] = useState('')
   const [date, setDate] = useState(TODAY())
-  const [summary, setSummary] = useState('')
+  const [summaryKo, setSummaryKo] = useState('')
+  const [summaryEn, setSummaryEn] = useState('')
   const [categoriesRaw, setCategoriesRaw] = useState('')
-  const [tagsRaw, setTagsRaw] = useState('')
-  const [body, setBody] = useState('')
+  const [tags, setTags] = useState<Set<AllowedTag>>(new Set())
+  const [bodyKo, setBodyKo] = useState('')
+  const [bodyEn, setBodyEn] = useState('')
   const [overwrite, setOverwrite] = useState(false)
+
+  const [lang, setLang] = useState<Lang>('ko')
+  const [showPreview, setShowPreview] = useState(false)
 
   const [submitBusy, setSubmitBusy] = useState(false)
   const [submitMsg, setSubmitMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
-  const [showPreview, setShowPreview] = useState(false)
 
-  // Restore password from sessionStorage so refresh doesn't kick out.
   useEffect(() => {
     const saved = typeof window !== 'undefined' ? sessionStorage.getItem('blog_write_pw') : null
     if (saved) setPassword(saved)
@@ -93,11 +101,16 @@ export default function BlogWritePage() {
     setAuthBusy(true)
     setAuthError(null)
     try {
-      // Cheap probe: send a write request that will fail validation but reveal auth status.
       const res = await fetch('/api/blog/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password, slug: '__probe__', title: '_', date: '0000-00-00', body: '' }),
+        body: JSON.stringify({
+          password,
+          slug: '__probe__',
+          title_ko: '_',
+          date: '0000-00-00',
+          body_ko: '',
+        }),
       })
       const j = await res.json().catch(() => ({}))
       if (res.status === 401) {
@@ -108,7 +121,6 @@ export default function BlogWritePage() {
         setAuthError(j.error || '프로덕션에서는 사용할 수 없습니다.')
         return
       }
-      // 400 (validation) or 500 (env) — auth passed if not 401
       if (res.status === 500) {
         setAuthError(j.error || '서버 설정 오류.')
         return
@@ -122,11 +134,11 @@ export default function BlogWritePage() {
     }
   }, [password])
 
-  // Auto-derive slug from title until user edits it manually.
   const [slugTouched, setSlugTouched] = useState(false)
   useEffect(() => {
     if (slugTouched) return
-    const auto = title
+    const source = titleEn || titleKo
+    const auto = source
       .toLowerCase()
       .normalize('NFKD')
       .replace(/[̀-ͯ]/g, '')
@@ -136,33 +148,43 @@ export default function BlogWritePage() {
       .replace(/-+/g, '-')
       .slice(0, 80)
     setSlug(auto)
-  }, [title, slugTouched])
+  }, [titleKo, titleEn, slugTouched])
+
+  const activeBody = lang === 'ko' ? bodyKo : bodyEn
+  const setActiveBody = lang === 'ko' ? setBodyKo : setBodyEn
 
   const previewHtml = useMemo(() => {
-    if (!showPreview) return ''
-    if (!body) return ''
-    const raw = marked(body) as string
-    return DOMPurify.sanitize(raw)
-  }, [body, showPreview])
+    if (!showPreview || !activeBody) return ''
+    return DOMPurify.sanitize(marked(activeBody) as string)
+  }, [showPreview, activeBody])
+
+  const toggleTag = (t: AllowedTag) => {
+    const next = new Set(tags)
+    if (next.has(t)) next.delete(t)
+    else next.add(t)
+    setTags(next)
+  }
 
   const onSubmit = useCallback(async () => {
     setSubmitBusy(true)
     setSubmitMsg(null)
     try {
       const categories = categoriesRaw.split(',').map(s => s.trim()).filter(Boolean)
-      const tags = tagsRaw.split(',').map(s => s.trim()).filter(Boolean)
       const res = await fetch('/api/blog/write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           password,
           slug,
-          title,
+          title_ko: titleKo,
+          title_en: titleEn || undefined,
           date,
-          summary: summary || undefined,
+          summary_ko: summaryKo || undefined,
+          summary_en: summaryEn || undefined,
           categories,
-          tags,
-          body,
+          tags: Array.from(tags),
+          body_ko: bodyKo,
+          body_en: bodyEn || undefined,
           overwrite,
         }),
       })
@@ -170,9 +192,10 @@ export default function BlogWritePage() {
       if (!res.ok || !j.ok) {
         setSubmitMsg({ kind: 'err', text: j.error || `요청 실패 (HTTP ${res.status})` })
       } else {
+        const paths = (j.paths as string[] | undefined)?.join(', ') ?? j.path
         setSubmitMsg({
           kind: 'ok',
-          text: `저장됨: ${j.path}${j.overwritten ? ' (덮어씀)' : ''}. git push + vercel --prod로 배포하세요.`,
+          text: `저장됨: ${paths}${j.overwritten ? ' (덮어씀)' : ''}. git push + vercel --prod로 배포하세요.`,
         })
       }
     } catch (e) {
@@ -180,7 +203,7 @@ export default function BlogWritePage() {
     } finally {
       setSubmitBusy(false)
     }
-  }, [password, slug, title, date, summary, categoriesRaw, tagsRaw, body, overwrite])
+  }, [password, slug, titleKo, titleEn, date, summaryKo, summaryEn, categoriesRaw, tags, bodyKo, bodyEn, overwrite])
 
   // ─── Auth gate ───────────────────────────────────────────────────────────
   if (!unlocked) {
@@ -223,6 +246,17 @@ export default function BlogWritePage() {
   }
 
   // ─── Editor ─────────────────────────────────────────────────────────────
+  const langTabBtn = (active: boolean): React.CSSProperties => ({
+    padding: '0.3rem 0.7rem',
+    fontSize: '0.72rem',
+    background: active ? 'var(--accent)' : 'transparent',
+    color: active ? 'var(--bg)' : 'var(--text-dim)',
+    border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-jb-mono, monospace)',
+  })
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -232,12 +266,38 @@ export default function BlogWritePage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', ...fieldGap }}>
         <div>
-          <label style={labelStyle}>title</label>
+          <label style={labelStyle}>title (ko)</label>
           <input
             type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={titleKo}
+            onChange={(e) => setTitleKo(e.target.value)}
             placeholder="제목"
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>title (en, optional)</label>
+          <input
+            type="text"
+            value={titleEn}
+            onChange={(e) => setTitleEn(e.target.value)}
+            placeholder="Title"
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', ...fieldGap }}>
+        <div>
+          <label style={labelStyle}>slug</label>
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => {
+              setSlugTouched(true)
+              setSlug(e.target.value)
+            }}
+            placeholder="my-post-slug"
             style={inputStyle}
           />
         </div>
@@ -253,72 +313,79 @@ export default function BlogWritePage() {
         </div>
       </div>
 
-      <div style={fieldGap}>
-        <label style={labelStyle}>slug (파일명: content/blog/&lt;slug&gt;.md)</label>
-        <input
-          type="text"
-          value={slug}
-          onChange={(e) => {
-            setSlugTouched(true)
-            setSlug(e.target.value)
-          }}
-          placeholder="my-post-slug"
-          style={inputStyle}
-        />
-      </div>
-
-      <div style={fieldGap}>
-        <label style={labelStyle}>summary (1~2줄, 카드에 표시됨)</label>
-        <input
-          type="text"
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-          placeholder="짧은 요약"
-          style={inputStyle}
-        />
-      </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', ...fieldGap }}>
         <div>
-          <label style={labelStyle}>categories (쉼표로 구분)</label>
+          <label style={labelStyle}>summary (ko)</label>
           <input
             type="text"
-            value={categoriesRaw}
-            onChange={(e) => setCategoriesRaw(e.target.value)}
-            placeholder="AI, 프롬프트엔지니어링"
+            value={summaryKo}
+            onChange={(e) => setSummaryKo(e.target.value)}
+            placeholder="짧은 요약"
             style={inputStyle}
           />
         </div>
         <div>
-          <label style={labelStyle}>tags (쉼표로 구분)</label>
+          <label style={labelStyle}>summary (en, optional)</label>
           <input
             type="text"
-            value={tagsRaw}
-            onChange={(e) => setTagsRaw(e.target.value)}
-            placeholder="LLM, Claude, GPT"
+            value={summaryEn}
+            onChange={(e) => setSummaryEn(e.target.value)}
+            placeholder="Short summary"
             style={inputStyle}
           />
         </div>
       </div>
 
       <div style={fieldGap}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-          <label style={{ ...labelStyle, marginBottom: 0 }}>body (markdown)</label>
-          <button
-            type="button"
-            onClick={() => setShowPreview(v => !v)}
-            className="font-mono"
-            style={{
-              fontSize: '0.7rem',
-              color: 'var(--text-dim)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            {showPreview ? '편집으로' : '미리보기'}
-          </button>
+        <label style={labelStyle}>categories (쉼표로 구분, 자유)</label>
+        <input
+          type="text"
+          value={categoriesRaw}
+          onChange={(e) => setCategoriesRaw(e.target.value)}
+          placeholder="dev, essay"
+          style={inputStyle}
+        />
+      </div>
+
+      <div style={fieldGap}>
+        <label style={labelStyle}>tags (3개 중 선택)</label>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+          {ALLOWED_TAGS.map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => toggleTag(t)}
+              className={`tag${tags.has(t) ? ' tag-active' : ''}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={fieldGap}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', gap: '0.5rem' }}>
+          <label style={{ ...labelStyle, marginBottom: 0 }}>body</label>
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button type="button" onClick={() => setLang('ko')} style={langTabBtn(lang === 'ko')}>KO</button>
+            <button type="button" onClick={() => setLang('en')} style={langTabBtn(lang === 'en')}>EN</button>
+            <span style={{ width: '0.5rem' }} />
+            <button
+              type="button"
+              onClick={() => setShowPreview(v => !v)}
+              className="font-mono"
+              style={{
+                fontSize: '0.7rem',
+                color: 'var(--text-dim)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              {showPreview ? '편집으로' : '미리보기'}
+            </button>
+          </div>
         </div>
         {showPreview ? (
           <div
@@ -334,14 +401,17 @@ export default function BlogWritePage() {
           />
         ) : (
           <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="# 제목&#10;&#10;본문..."
+            value={activeBody}
+            onChange={(e) => setActiveBody(e.target.value)}
+            placeholder={lang === 'ko' ? '# 제목\n\n본문...' : '# Heading\n\nBody...'}
             rows={20}
             spellCheck={false}
-            style={{ ...inputStyle, minHeight: '20rem', resize: 'vertical', fontFamily: 'var(--font-mono, monospace)' }}
+            style={{ ...inputStyle, minHeight: '20rem', resize: 'vertical', fontFamily: 'var(--font-jb-mono, monospace)' }}
           />
         )}
+        <p className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--text-dim)', marginTop: '0.4rem' }}>
+          수정 표기 양식: {'{원문}'} ⟶ 수정 ,,, (글 페이지에서 빨/초로 하이라이트됨)
+        </p>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
@@ -357,7 +427,7 @@ export default function BlogWritePage() {
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <Btn primary onClick={onSubmit} disabled={submitBusy || !title || !slug || !body}>
+        <Btn primary onClick={onSubmit} disabled={submitBusy || !titleKo || !slug || !bodyKo}>
           {submitBusy ? '저장 중...' : '저장'}
         </Btn>
         {submitMsg && (

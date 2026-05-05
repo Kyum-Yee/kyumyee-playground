@@ -4,6 +4,9 @@ import bcrypt from 'bcryptjs'
 
 export const runtime = 'nodejs'
 
+const ALLOWED_TAGS = ['AI', '프롬프트', '디자인'] as const
+type AllowedTag = typeof ALLOWED_TAGS[number]
+
 const SLUG_RE = /^[a-z0-9][a-z0-9_-]{0,79}$/
 const BLOG_DIR = path.join(process.cwd(), 'content/blog')
 const MAX_BODY = 200_000
@@ -12,12 +15,15 @@ const MAX_TITLE = 200
 interface WriteBody {
   password?: string
   slug?: string
-  title?: string
+  title_ko?: string
+  title_en?: string
   date?: string
-  summary?: string
+  summary_ko?: string
+  summary_en?: string
   categories?: string[]
   tags?: string[]
-  body?: string
+  body_ko?: string
+  body_en?: string
   overwrite?: boolean
 }
 
@@ -52,8 +58,11 @@ function buildFrontmatter(meta: {
   return lines.join('\n')
 }
 
+function buildContent(meta: Parameters<typeof buildFrontmatter>[0], body: string): string {
+  return buildFrontmatter(meta) + body.replace(/\r\n/g, '\n').trimEnd() + '\n'
+}
+
 export async function POST(req: Request) {
-  // Hard-block in production: Vercel filesystem is ephemeral.
   if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
     return fail(503, '이 기능은 로컬 개발 환경(npm run dev)에서만 동작합니다. 글 작성 후 git push + vercel --prod로 배포하세요.')
   }
@@ -75,37 +84,70 @@ export async function POST(req: Request) {
   if (!ok) return fail(401, '비밀번호가 일치하지 않습니다.')
 
   const slug = String(data.slug ?? '').trim()
-  const title = String(data.title ?? '').trim()
-  const body = String(data.body ?? '')
+  const titleKo = String(data.title_ko ?? '').trim()
+  const titleEn = data.title_en ? String(data.title_en).trim() : ''
   const date = String(data.date ?? '').trim()
-  const summary = data.summary ? String(data.summary).trim() : undefined
+  const summaryKo = data.summary_ko ? String(data.summary_ko).trim() : undefined
+  const summaryEn = data.summary_en ? String(data.summary_en).trim() : undefined
+  const bodyKo = String(data.body_ko ?? '')
+  const bodyEn = data.body_en ? String(data.body_en) : ''
+  const overwrite = data.overwrite === true
+
   const categories = Array.isArray(data.categories)
     ? data.categories.map(String).map(s => s.trim()).filter(Boolean)
     : []
-  const tags = Array.isArray(data.tags)
+  const tagsInput = Array.isArray(data.tags)
     ? data.tags.map(String).map(s => s.trim()).filter(Boolean)
     : []
-  const overwrite = data.overwrite === true
+  const invalidTag = tagsInput.find(t => !ALLOWED_TAGS.includes(t as AllowedTag))
+  if (invalidTag) return fail(400, `허용되지 않은 태그: "${invalidTag}". 허용: ${ALLOWED_TAGS.join(', ')}`)
+  const tags = tagsInput
 
   if (!SLUG_RE.test(slug)) return fail(400, 'slug는 소문자/숫자/하이픈/언더스코어만 (1~80자, 첫 글자는 영숫자).')
-  if (!title || title.length > MAX_TITLE) return fail(400, `title은 1~${MAX_TITLE}자.`)
+  if (!titleKo || titleKo.length > MAX_TITLE) return fail(400, `title (ko)은 1~${MAX_TITLE}자.`)
+  if (titleEn && titleEn.length > MAX_TITLE) return fail(400, `title (en)은 ${MAX_TITLE}자 이하.`)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, 'date는 YYYY-MM-DD 형식.')
-  if (body.length > MAX_BODY) return fail(400, `본문은 ${MAX_BODY}자 이하.`)
-  if (categories.length > 20 || tags.length > 50) return fail(400, '카테고리/태그 개수가 너무 많습니다.')
+  if (bodyKo.length > MAX_BODY) return fail(400, `본문(ko)은 ${MAX_BODY}자 이하.`)
+  if (bodyEn.length > MAX_BODY) return fail(400, `본문(en)은 ${MAX_BODY}자 이하.`)
+  if (categories.length > 20) return fail(400, '카테고리 개수가 너무 많습니다.')
 
   await fs.mkdir(BLOG_DIR, { recursive: true })
 
-  const filePath = path.join(BLOG_DIR, `${slug}.md`)
-  // Defense-in-depth against path escape via slug.
-  if (!filePath.startsWith(BLOG_DIR + path.sep)) return fail(400, '잘못된 slug.')
+  const koFile = path.join(BLOG_DIR, `${slug}.md`)
+  const enFile = path.join(BLOG_DIR, `${slug}.en.md`)
+  if (!koFile.startsWith(BLOG_DIR + path.sep) || !enFile.startsWith(BLOG_DIR + path.sep)) {
+    return fail(400, '잘못된 slug.')
+  }
 
-  const exists = await fs.access(filePath).then(() => true, () => false)
-  if (exists && !overwrite) return fail(409, '같은 slug의 글이 이미 있습니다. 덮어쓰려면 overwrite를 켜세요.')
+  const koExists = await fs.access(koFile).then(() => true, () => false)
+  if (koExists && !overwrite) return fail(409, '같은 slug의 글이 이미 있습니다. 덮어쓰려면 overwrite를 켜세요.')
 
-  const frontmatter = buildFrontmatter({ title, date, summary, categories, tags })
-  const content = frontmatter + body.replace(/\r\n/g, '\n').trimEnd() + '\n'
+  const koContent = buildContent(
+    { title: titleKo, date, summary: summaryKo, categories, tags },
+    bodyKo,
+  )
+  await fs.writeFile(koFile, koContent, 'utf-8')
 
-  await fs.writeFile(filePath, content, 'utf-8')
+  const paths = [`content/blog/${slug}.md`]
 
-  return Response.json({ ok: true, slug, path: `content/blog/${slug}.md`, overwritten: exists })
+  if (bodyEn || titleEn) {
+    const enContent = buildContent(
+      {
+        title: titleEn || titleKo,
+        date,
+        summary: summaryEn,
+        categories,
+        tags,
+      },
+      bodyEn,
+    )
+    await fs.writeFile(enFile, enContent, 'utf-8')
+    paths.push(`content/blog/${slug}.en.md`)
+  } else {
+    // If overwrite + en body cleared, drop the english file.
+    const enExists = await fs.access(enFile).then(() => true, () => false)
+    if (enExists && overwrite) await fs.unlink(enFile)
+  }
+
+  return Response.json({ ok: true, slug, paths, overwritten: koExists })
 }

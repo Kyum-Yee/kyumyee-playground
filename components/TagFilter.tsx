@@ -52,7 +52,7 @@ function TagFilterInner({ tags, categories, basePath }: Props) {
               onClick={() => navigate(activeTag === t ? '' : t, activeCategory)}
               className={`tag${activeTag === t ? ' tag-active' : ''}`}
             >
-              #{t}
+              {t}
             </button>
           ))}
         </div>
