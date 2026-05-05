@@ -59,9 +59,30 @@ export default async function PromptDetailPage({ params }: Props) {
         </div>
       </header>
 
-      <div className="prose-wrap">
-        <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />
-      </div>
+      {meta.category === 'design' ? (
+        <div className="prose-wrap">
+          <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />
+        </div>
+      ) : (
+        <pre
+          style={{
+            fontFamily: 'var(--font-jb-mono, monospace)',
+            fontSize: '0.82rem',
+            lineHeight: 1.65,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            padding: '1.1rem 1.2rem',
+            background: 'var(--bg)',
+            border: '1px solid var(--border)',
+            borderRadius: '4px',
+            color: 'var(--text-bright)',
+            overflowX: 'auto',
+            margin: 0,
+          }}
+        >
+          {body}
+        </pre>
+      )}
 
       <div
         style={{
