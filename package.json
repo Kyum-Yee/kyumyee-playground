@@ -16,6 +16,7 @@
     "bcryptjs": "^3.0.3",
     "dompurify": "^3.4.2",
     "gray-matter": "^4.0.3",
+    "highlight.js": "^11.11.1",
     "katex": "^0.16.44",
     "marked": "^17.0.5",
     "marked-katex-extension": "^5.1.7",

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getPrompt, getPromptList } from '@/lib/prompt'
+import { getPrompt, getPromptList, highlightMarkdown } from '@/lib/prompt'
 import CopyButton from '@/components/CopyButton'
 import DownloadButton from '@/components/DownloadButton'
 
@@ -65,6 +65,7 @@ export default async function PromptDetailPage({ params }: Props) {
         </div>
       ) : (
         <pre
+          className="md-hl"
           style={{
             fontFamily: 'var(--font-jb-mono, monospace)',
             fontSize: '0.82rem',
@@ -79,9 +80,8 @@ export default async function PromptDetailPage({ params }: Props) {
             overflowX: 'auto',
             margin: 0,
           }}
-        >
-          {body}
-        </pre>
+          dangerouslySetInnerHTML={{ __html: highlightMarkdown(body) }}
+        />
       )}
 
       <div

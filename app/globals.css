@@ -418,3 +418,24 @@ body::after {
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* ── Markdown raw highlight (highlight.js standard markdown tokens) ───────── */
+/* /prompt/<slug> 의 prompt·reference 카테고리에서 raw <pre className="md-hl"> 에 적용. */
+.md-hl .hljs-section { color: var(--accent); font-weight: 600; }
+.md-hl .hljs-strong  { color: var(--accent); font-weight: 600; }
+.md-hl .hljs-emphasis { color: var(--text-dim); font-style: italic; }
+.md-hl .hljs-quote   { color: var(--text-dim); font-style: italic; }
+.md-hl .hljs-bullet  { color: var(--text-dim); }
+.md-hl .hljs-link    { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.md-hl .hljs-string  { color: #7AA2F7; }                       /* link URL */
+.md-hl .hljs-code    {
+  color: #C0CAF5;
+  background: rgba(120, 150, 200, 0.10);
+  padding: 0 0.25em;
+  border-radius: 3px;
+}
+.md-hl .hljs-symbol  { color: #E0AF68; }                       /* hr / list markers in some grammars */
+.md-hl .hljs-meta    { color: var(--text-dim); }
+.md-hl .hljs-comment { color: var(--text-dim); font-style: italic; }
+/* code-fence content fallback (no nested language) */
+.md-hl .hljs-meta-string { color: #7AA2F7; }
