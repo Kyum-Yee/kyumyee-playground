@@ -19,6 +19,7 @@
     "highlight.js": "^11.11.1",
     "katex": "^0.16.44",
     "marked": "^17.0.5",
+    "marked-footnote": "^1.4.0",
     "marked-katex-extension": "^5.1.7",
     "next": "16.2.1",
     "oauth-1.0a": "^2.2.6",

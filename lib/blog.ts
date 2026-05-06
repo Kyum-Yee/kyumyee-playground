@@ -2,11 +2,20 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 import { marked } from 'marked'
+import markedFootnote from 'marked-footnote'
 import sanitizeHtml from 'sanitize-html'
 import type { BlogMeta } from './content'
 
 export const ALLOWED_TAGS = ['AI', '프롬프트', '디자인'] as const
 export type AllowedTag = typeof ALLOWED_TAGS[number]
+
+// GFM footnote ([^1] 본문 참조 + [^1]: 정의) 지원. 모듈 로드 시 한 번만 등록.
+let footnoteRegistered = false
+function ensureFootnote() {
+  if (footnoteRegistered) return
+  marked.use(markedFootnote())
+  footnoteRegistered = true
+}
 
 const BLOG_DIR = path.join(process.cwd(), 'content/blog')
 
@@ -33,6 +42,7 @@ function highlightDiffSpan(raw: string): string {
 // Render markdown body → HTML, with EDIT_POINT tokens converted to highlight spans.
 function renderBodyToHtml(body: string): string {
   if (!body) return ''
+  ensureFootnote()
   const tokens: string[] = []
   let cursor = 0
   let withPlaceholders = ''
@@ -50,11 +60,19 @@ function renderBodyToHtml(body: string): string {
 
   const rawHtml = marked(withPlaceholders) as string
   const safeHtml = sanitizeHtml(rawHtml, {
-    allowedTags: ['h1','h2','h3','h4','h5','p','ul','ol','li','strong','em','code','pre','blockquote','a','img','hr','br','table','thead','tbody','tr','th','td','span'],
+    allowedTags: [
+      'h1','h2','h3','h4','h5','p','ul','ol','li','strong','em','code','pre',
+      'blockquote','a','img','hr','br','table','thead','tbody','tr','th','td',
+      'span','sup','sub','section',
+    ],
     allowedAttributes: {
-      a: ['href'],
+      a: ['href','rel','target','data-footnote-ref','aria-describedby'],
       img: ['src','alt'],
       span: ['class'],
+      section: ['class','data-footnotes'],
+      ol: ['class'],
+      li: ['id','class'],
+      sup: ['class'],
       '*': ['class','id'],
     },
   })
