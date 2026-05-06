@@ -112,6 +112,7 @@ export default function PostView({ meta, metaEn, bodyKo, bodyEn, htmlKo, htmlEn 
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const preRef = useRef<HTMLPreElement>(null)
+  const proseRef = useRef<HTMLDivElement>(null)
   const [editorFocused, setEditorFocused] = useState(false)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
 
@@ -337,6 +338,31 @@ export default function PostView({ meta, metaEn, bodyKo, bodyEn, htmlKo, htmlEn 
     preRef.current.style.transform = `translateY(${-ta.scrollTop}px)`
   }, [text, mode])
 
+  // rendered HTML 안의 hash anchor (footnote ref ↔ backref) 클릭 시 부드럽게 스크롤.
+  // dangerouslySetInnerHTML 로 박힌 plain <a href="#..."> 들이 Next.js SPA 환경에서
+  // 가끔 기본 jump가 안 먹는 경우가 있어 명시적으로 scrollIntoView 처리.
+  useEffect(() => {
+    const container = proseRef.current
+    if (!container) return
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      const anchor = target.closest('a[href^="#"]') as HTMLAnchorElement | null
+      if (!anchor || !container.contains(anchor)) return
+      const href = anchor.getAttribute('href')
+      if (!href || href.length < 2) return
+      const id = decodeURIComponent(href.slice(1))
+      const el = document.getElementById(id)
+      if (!el) return
+      e.preventDefault()
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      // URL hash 도 갱신 → :target 스타일이 발화 + 새로고침/공유 시 위치 보존
+      history.replaceState(null, '', `#${id}`)
+    }
+    container.addEventListener('click', onClick)
+    return () => container.removeEventListener('click', onClick)
+  }, [renderedHtml, mode, isDev])
+
   const toggleBtn = (active: boolean): React.CSSProperties => ({
     padding: '0.3rem 0.7rem',
     fontSize: '0.72rem',
@@ -526,7 +552,7 @@ export default function PostView({ meta, metaEn, bodyKo, bodyEn, htmlKo, htmlEn 
       )}
 
       {!isDev || mode === 'rendered' ? (
-        <div className="prose-wrap">
+        <div ref={proseRef} className="prose-wrap">
           <div className="prose" dangerouslySetInnerHTML={{ __html: renderedHtml }} />
         </div>
       ) : (

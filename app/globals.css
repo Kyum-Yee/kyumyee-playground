@@ -256,10 +256,17 @@ body::after {
   border-bottom: none;
   color: var(--accent);
   font-family: var(--font-mono);
+  scroll-margin-top: 5rem;
 }
 .prose a[data-footnote-ref]::before { content: "["; }
 .prose a[data-footnote-ref]::after  { content: "]"; }
 .prose a[data-footnote-ref]:hover { color: var(--accent); text-decoration: underline; }
+/* :target — 백링크로 점프해 들어왔을 때 잠깐 강조 (어디 도착했는지 시각 단서) */
+.prose a[data-footnote-ref]:target {
+  background: var(--accent-dim);
+  border-radius: 2px;
+  padding: 0 0.15em;
+}
 
 /* 정의 섹션 컨테이너 */
 .prose section.footnotes {
@@ -289,6 +296,11 @@ body::after {
   position: relative;
   padding-left: 2.6em;
   margin-bottom: 0.6rem;
+  scroll-margin-top: 5rem;
+}
+.prose section.footnotes ol > li:target {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
 }
 .prose section.footnotes ol > li::before {
   content: "[" counter(fn) "]";
